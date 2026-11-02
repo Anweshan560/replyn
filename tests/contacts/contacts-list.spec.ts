@@ -28,24 +28,25 @@ const TOTAL = /^(\d+) contacts?$/;
 // Every test creates its own contacts (the workspace has almost none) and deletes them afterwards.
 // Lists are narrowed with a search for the test's own contacts, as other tests run in parallel.
 test.describe('Contacts list', { tag: ['@contacts'] }, () => {
-  test('should open Contacts from the sidebar with the list and its columns', async ({
-    page,
-    contactsPage,
-  }) => {
-    await test.step('go to Contacts from the main sidebar', () => contactsPage.openFromSidebar());
+  test(
+    'should open Contacts from the sidebar with the list and its columns',
+    { tag: '@smoke' },
+    async ({ page, contactsPage }) => {
+      await test.step('go to Contacts from the main sidebar', () => contactsPage.openFromSidebar());
 
-    await test.step('the address is /contacts and the table is shown', async () => {
-      await expect(page).toHaveURL(/\/contacts(\?|$)/);
-      await expect(contactsPage.table).toBeVisible();
-    });
-    await test.step('the table has the default columns, in order', async () => {
-      const headers = (await contactsPage.table.getByRole('columnheader').allInnerTexts())
-        .map((header) => header.trim())
-        // The first header holds only the "Select all" checkbox, the last one the row menus.
-        .filter(Boolean);
-      expect(headers).toEqual(DEFAULT_COLUMNS);
-    });
-  });
+      await test.step('the address is /contacts and the table is shown', async () => {
+        await expect(page).toHaveURL(/\/contacts(\?|$)/);
+        await expect(contactsPage.table).toBeVisible();
+      });
+      await test.step('the table has the default columns, in order', async () => {
+        const headers = (await contactsPage.table.getByRole('columnheader').allInnerTexts())
+          .map((header) => header.trim())
+          // The first header holds only the "Select all" checkbox, the last one the row menus.
+          .filter(Boolean);
+        expect(headers).toEqual(DEFAULT_COLUMNS);
+      });
+    },
+  );
 
   test('should find a contact by name, put the search in the address, and clear it', async ({
     page,

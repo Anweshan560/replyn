@@ -4,14 +4,18 @@ import { REPORTS } from '../../pages/reports/ReportsPage';
 // Every report opens from the Reports home and loads without errors. What the numbers mean is
 // checked with seeded data in reports/numbers (exclusive: other tests change the counts).
 test.describe('Reports', { tag: ['@reports'] }, () => {
-  test('should open Reports from the sidebar with a link to every report', async ({ reportsPage }) => {
-    await test.step('go to Reports from the sidebar', () => reportsPage.openFromDashboard());
-    await test.step(`the home links to all ${REPORTS.length} reports`, async () => {
-      for (const report of REPORTS) {
-        await expect(reportsPage.reportLink(report), `${report.group} → ${report.title}`).toBeVisible();
-      }
-    });
-  });
+  test(
+    'should open Reports from the sidebar with a link to every report',
+    { tag: '@smoke' },
+    async ({ reportsPage }) => {
+      await test.step('go to Reports from the sidebar', () => reportsPage.openFromDashboard());
+      await test.step(`the home links to all ${REPORTS.length} reports`, async () => {
+        for (const report of REPORTS) {
+          await expect(reportsPage.reportLink(report), `${report.group} → ${report.title}`).toBeVisible();
+        }
+      });
+    },
+  );
 
   test('should narrow the list when user searches for a report', async ({ reportsPage }) => {
     await test.step('go to Reports', () => reportsPage.openFromDashboard());

@@ -3,13 +3,17 @@ import { toCustomViewPayload } from '../../../api/CustomViewsApi';
 import { buildSavedView } from '../../../utils/testData';
 
 test.describe('Inbox → Views', { tag: ['@inbox', '@saved-views'] }, () => {
-  test('should open the inbox from the sidebar with its Views section', async ({ page, savedViewsPage }) => {
-    await test.step('go to the inbox from the sidebar', () => savedViewsPage.openFromDashboard());
-    await test.step('the sidebar has a Views section with New view', async () => {
-      await expect(page.getByRole('button', { name: 'Views', exact: true })).toBeVisible();
-      await expect(savedViewsPage.newViewButton).toBeVisible();
-    });
-  });
+  test(
+    'should open the inbox from the sidebar with its Views section',
+    { tag: '@smoke' },
+    async ({ page, savedViewsPage }) => {
+      await test.step('go to the inbox from the sidebar', () => savedViewsPage.openFromDashboard());
+      await test.step('the sidebar has a Views section with New view', async () => {
+        await expect(page.getByRole('button', { name: 'Views', exact: true })).toBeVisible();
+        await expect(savedViewsPage.newViewButton).toBeVisible();
+      });
+    },
+  );
 
   test('should keep Create view disabled until the view has a name', async ({ savedViewsPage }) => {
     const createButton = savedViewsPage.createDialog.getByRole('button', { name: 'Create view' });

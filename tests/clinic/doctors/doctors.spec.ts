@@ -6,16 +6,17 @@ import { buildDoctor } from '../../../utils/testData';
 
 // Already logged in through the saved session from tests/setup/auth.setup.ts.
 test.describe('Doctors', { tag: ['@clinic', '@doctors'] }, () => {
-  test('should open the Doctors page when user picks Doctors in the Clinic menu', async ({
-    page,
-    doctorsPage,
-  }) => {
-    await test.step('go to Clinic → Doctors from the dashboard', () => doctorsPage.openFromDashboard());
-    await test.step('the doctors list is shown', async () => {
-      await expect(page).toHaveURL('/doctors');
-      await expect(doctorsPage.table).toBeVisible();
-    });
-  });
+  test(
+    'should open the Doctors page when user picks Doctors in the Clinic menu',
+    { tag: '@smoke' },
+    async ({ page, doctorsPage }) => {
+      await test.step('go to Clinic → Doctors from the dashboard', () => doctorsPage.openFromDashboard());
+      await test.step('the doctors list is shown', async () => {
+        await expect(page).toHaveURL('/doctors');
+        await expect(doctorsPage.table).toBeVisible();
+      });
+    },
+  );
 
   test('should save every field when user creates a doctor', async ({ doctorsPage, doctorsApi, cleanup }) => {
     const doctor = buildDoctor();

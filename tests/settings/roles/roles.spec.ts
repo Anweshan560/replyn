@@ -4,14 +4,18 @@ import { CONTACT_VISIBILITY, buildRole } from '../../../utils/testData';
 
 // Tests only change roles they create; the built-in roles are only looked at.
 test.describe('Settings → Roles', { tag: ['@settings', '@roles'] }, () => {
-  test('should open Roles from the Settings menu with the five built-in roles', async ({ rolesPage }) => {
-    await test.step('go to Settings → Workspace → Roles', () => rolesPage.openFromDashboard());
-    await test.step('Admin, Member, Agent, Marketing and Finance are listed as built-in', async () => {
-      for (const name of ['Admin', 'Member', 'Agent', 'Marketing', 'Finance']) {
-        await expect(rolesPage.row(name)).toContainText('Built-in');
-      }
-    });
-  });
+  test(
+    'should open Roles from the Settings menu with the five built-in roles',
+    { tag: '@smoke' },
+    async ({ rolesPage }) => {
+      await test.step('go to Settings → Workspace → Roles', () => rolesPage.openFromDashboard());
+      await test.step('Admin, Member, Agent, Marketing and Finance are listed as built-in', async () => {
+        for (const name of ['Admin', 'Member', 'Agent', 'Marketing', 'Finance']) {
+          await expect(rolesPage.row(name)).toContainText('Built-in');
+        }
+      });
+    },
+  );
 
   test('should not offer Delete for a built-in role', async ({ rolesPage }) => {
     await test.step('open Settings → Roles', () => rolesPage.open());

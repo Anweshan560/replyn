@@ -32,6 +32,7 @@
     "test:inbox": "playwright test tests/inbox",
     "test:reports": "playwright test tests/reports",
     "test:report-numbers": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/reports/numbers",
+    "test:quarantine": "cross-env QUARANTINE_TESTS=true playwright test",
     "test:exclusive": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive",
     "test:organization": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/settings/organization",
     "test:workspace": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/settings/workspace tests/settings/hours tests/settings/sla tests/settings/assignment tests/settings/ai",

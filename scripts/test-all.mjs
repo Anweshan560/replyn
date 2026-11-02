@@ -21,9 +21,11 @@ function run(label, args, env = {}) {
 const main = run('All tests except the exclusive ones', []);
 const exclusive = run(
   'Exclusive tests: organization and workspace-wide settings (on their own)',
-  ['--project=exclusive'],
+  // Their own results and report folders, so they don't replace those of part 1.
+  ['--project=exclusive', '--output=test-results/exclusive'],
   {
     EXCLUSIVE_TESTS: 'true',
+    PLAYWRIGHT_HTML_OUTPUT_DIR: 'playwright-report/exclusive',
   },
 );
 

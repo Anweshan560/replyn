@@ -13,24 +13,25 @@ function aed(amount: number): string {
 // their own patient's rows, never the totals. Deleting the patient's contact removes their
 // invoices, receipts and advances (see cleanupBooking).
 test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
-  test('should open Billing from the Clinic menu, with a tab for each view', async ({
-    page,
-    billingPage,
-  }) => {
-    await test.step('go to Clinic → Billing', () => billingPage.openFromSidebar());
+  test(
+    'should open Billing from the Clinic menu, with a tab for each view',
+    { tag: '@smoke' },
+    async ({ page, billingPage }) => {
+      await test.step('go to Clinic → Billing', () => billingPage.openFromSidebar());
 
-    await test.step('the address is /clinics/billing and Owes money is selected', async () => {
-      await expect(page).toHaveURL(/\/clinics\/billing/);
-      await expect(billingPage.tab('Owes money')).toHaveAttribute('aria-selected', 'true');
-    });
-    for (const [tab, view] of Object.entries(BILLING_TABS) as [BillingTab, string][]) {
-      await test.step(`${tab}: the address gets view=${view} and a grid is shown`, async () => {
-        await billingPage.openTab(tab);
-        await expect(page).toHaveURL((url) => url.searchParams.get('view') === view);
-        await expect(billingPage.grid).toBeVisible();
+      await test.step('the address is /clinics/billing and Owes money is selected', async () => {
+        await expect(page).toHaveURL(/\/clinics\/billing/);
+        await expect(billingPage.tab('Owes money')).toHaveAttribute('aria-selected', 'true');
       });
-    }
-  });
+      for (const [tab, view] of Object.entries(BILLING_TABS) as [BillingTab, string][]) {
+        await test.step(`${tab}: the address gets view=${view} and a grid is shown`, async () => {
+          await billingPage.openTab(tab);
+          await expect(page).toHaveURL((url) => url.searchParams.get('view') === view);
+          await expect(billingPage.grid).toBeVisible();
+        });
+      }
+    },
+  );
 
   test('should list an attended visit with no invoice under Needs review', async ({
     billingPage,

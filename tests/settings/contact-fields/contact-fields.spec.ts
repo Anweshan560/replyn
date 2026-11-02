@@ -5,21 +5,22 @@ import { ENDPOINTS } from '../../../api/ResourceApi';
 import { buildContactField } from '../../../utils/testData';
 
 test.describe('Settings → Contact Fields', { tag: ['@settings', '@contact-fields'] }, () => {
-  test('should open Contact Fields from the Settings menu with the built-in fields', async ({
-    page,
-    contactFieldsPage,
-  }) => {
-    await test.step('go to Settings → Contact Fields', () => contactFieldsPage.openFromDashboard());
-    await test.step('the built-in fields are listed and cannot be edited', async () => {
-      for (const name of ['First name', 'Last name', 'Phone', 'Email']) {
-        // Each field has a drag handle named after it ("Phone" alone is also a type label).
-        await expect(
-          page.getByRole('button', { name: `Reorder ${name}`, exact: true }).first(),
-        ).toBeVisible();
-        await expect(page.getByRole('button', { name: `Edit ${name}`, exact: true })).toHaveCount(0);
-      }
-    });
-  });
+  test(
+    'should open Contact Fields from the Settings menu with the built-in fields',
+    { tag: '@smoke' },
+    async ({ page, contactFieldsPage }) => {
+      await test.step('go to Settings → Contact Fields', () => contactFieldsPage.openFromDashboard());
+      await test.step('the built-in fields are listed and cannot be edited', async () => {
+        for (const name of ['First name', 'Last name', 'Phone', 'Email']) {
+          // Each field has a drag handle named after it ("Phone" alone is also a type label).
+          await expect(
+            page.getByRole('button', { name: `Reorder ${name}`, exact: true }).first(),
+          ).toBeVisible();
+          await expect(page.getByRole('button', { name: `Edit ${name}`, exact: true })).toHaveCount(0);
+        }
+      });
+    },
+  );
 
   test('should save every field when user creates a text field', async ({
     contactFieldsPage,

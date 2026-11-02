@@ -87,6 +87,16 @@ jobs:
             all)        npm run test:all ;;
           esac
 
+      # Flaky tests tagged @quarantine are left out above. They still run every day, but their
+      # failures only warn (and go to the sheet), so they cannot turn the run red. See README.
+      - name: Run quarantined tests (warn only)
+        if: always() && (steps.suite.outputs.name == 'regression' || steps.suite.outputs.name == 'all')
+        continue-on-error: true
+        env:
+          # A report and results folder of their own, so the regression's are not overwritten.
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/quarantine
+        run: npm run test:quarantine -- --output=test-results/quarantine
+
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4

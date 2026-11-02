@@ -92,6 +92,9 @@ export default class FailedTestsSheetReporter implements Reporter {
     const failed: Row[] = [];
     const passed = new Set<string>();
 
+    // Nothing ran (e.g. `--list`): leave the sheet alone.
+    if (!this.suite.allTests().some((test) => test.results.length)) return;
+
     for (const test of this.suite.allTests()) {
       const outcome = test.outcome();
       if (outcome === 'unexpected' || outcome === 'flaky') {

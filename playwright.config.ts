@@ -29,6 +29,27 @@ const EXCLUSIVE_TESTS =
  */
 const WORKSPACE_SETTINGS_TESTS = /settings[\\/]wrap-up[\\/].*\.spec\.ts/;
 
+/**
+ * Quarantine: a flaky test tagged @quarantine (with a comment saying why and since when) is left out
+ * of every normal run, so it cannot turn the daily run red, and runs on its own with
+ * `npm run test:quarantine` (QUARANTINE_TESTS=true). On CI that run comes after the regression and
+ * only warns. Fix it within a week, then remove the tag. See README, "Flaky tests".
+ */
+const QUARANTINE = /@quarantine/;
+const quarantineRun = process.env.QUARANTINE_TESTS === 'true';
+
+/** A project's tag filter: its own grep/grepInvert, plus leaving out (or only running) quarantine. */
+function tagFilter(grep?: RegExp, grepInvert?: RegExp): { grep?: RegExp; grepInvert?: RegExp[] } {
+  if (quarantineRun) {
+    return {
+      // Both the project's own tag (e.g. @smoke) and @quarantine.
+      grep: grep ? new RegExp(`^(?=.*${grep.source})(?=.*${QUARANTINE.source})`) : QUARANTINE,
+      grepInvert: grepInvert ? [grepInvert] : undefined,
+    };
+  }
+  return { grep, grepInvert: [...(grepInvert ? [grepInvert] : []), QUARANTINE] };
+}
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -47,6 +68,8 @@ export default defineConfig({
     ['./reporters/failure-reporter.ts'],
     // Writes failed tests to the shared Google Sheet as test cases (see README, "Failed tests sheet").
     ['./reporters/failed-tests-sheet-reporter.ts'],
+    // On GitHub Actions: a pass/fail table on the run's summary page.
+    ['./reporters/github-summary-reporter.ts'],
   ],
   outputDir: './test-results',
 
@@ -70,17 +93,19 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
-    // Quick check that the app is up and login works.
+    // Quick check that the app is up: login, and one key page per area (tests tagged @smoke).
+    // They start logged in, except the login test, which logs in itself.
     {
       name: 'smoke',
-      grep: /@smoke/,
+      ...tagFilter(/@smoke/),
       testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
-      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
     // Browser tests of the user interface: every *.spec.ts that is not an API test.
     {
       name: 'ui',
-      grepInvert: /@smoke/,
+      ...tagFilter(undefined, /@smoke/),
       testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
@@ -89,6 +114,7 @@ export default defineConfig({
     {
       name: 'api',
       testMatch: API_TESTS,
+      ...tagFilter(),
       testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
       dependencies: ['setup'],
       use: {
@@ -102,6 +128,7 @@ export default defineConfig({
     {
       name: 'workspace-settings',
       testMatch: WORKSPACE_SETTINGS_TESTS,
+      ...tagFilter(),
       dependencies: ['setup'],
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
@@ -110,6 +137,7 @@ export default defineConfig({
     {
       name: 'exclusive',
       testMatch: EXCLUSIVE_TESTS,
+      ...tagFilter(),
       dependencies: ['setup'],
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },

@@ -9,29 +9,27 @@ import { bookThroughApi, cleanupBooking, createDoctorAndTreatment } from '../boo
 // Every test uses its own doctor and treatment, and books on the next weekday (the clinic is
 // closed at weekends), so it never touches the real calendar.
 test.describe('Clinic → Appointments', { tag: ['@clinic', '@appointments'] }, () => {
-  test('should open Appointments from the sidebar on today, with a column per doctor', async ({
-    page,
-    appointmentsPage,
-    doctorsApi,
-    treatmentsApi,
-    cleanup,
-  }) => {
-    const { doctor } = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
-    // The heading's name is e.g. "Friday October 30 2026".
-    const today = new Date()
-      .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-      .replace(/,/g, '');
+  test(
+    'should open Appointments from the sidebar on today, with a column per doctor',
+    { tag: '@smoke' },
+    async ({ page, appointmentsPage, doctorsApi, treatmentsApi, cleanup }) => {
+      const { doctor } = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
+      // The heading's name is e.g. "Friday October 30 2026".
+      const today = new Date()
+        .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+        .replace(/,/g, '');
 
-    await test.step('click Clinic in the main sidebar', () => appointmentsPage.openFromSidebar());
+      await test.step('click Clinic in the main sidebar', () => appointmentsPage.openFromSidebar());
 
-    await test.step("the calendar shows today in Day view, with the new doctor's column", async () => {
-      await expect(page).toHaveURL(/\/appointments/);
-      // Check the heading's name: its visible text runs the words together ("FridayOctober 30").
-      await expect(appointmentsPage.dateHeading).toHaveAccessibleName(today);
-      await expect(appointmentsPage.doctorColumn(doctor.name)).toBeVisible();
-      await expect(appointmentsPage.newAppointmentButton).toBeVisible();
-    });
-  });
+      await test.step("the calendar shows today in Day view, with the new doctor's column", async () => {
+        await expect(page).toHaveURL(/\/appointments/);
+        // Check the heading's name: its visible text runs the words together ("FridayOctober 30").
+        await expect(appointmentsPage.dateHeading).toHaveAccessibleName(today);
+        await expect(appointmentsPage.doctorColumn(doctor.name)).toBeVisible();
+        await expect(appointmentsPage.newAppointmentButton).toBeVisible();
+      });
+    },
+  );
 
   test('should book a new patient when user fills in the New appointment dialog', async ({
     appointmentsPage,

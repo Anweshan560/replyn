@@ -196,3 +196,26 @@ One-time setup:
 
 To see the rows without touching the sheet, set `FAILED_TESTS_SHEET_DRY_RUN=true`: they are written to
 `test-results/failed-tests-sheet.json` instead.
+
+### Flaky tests
+
+CI retries a failed test twice. A test that fails and then passes on a retry is **flaky**: the run
+stays green, but the GitHub summary and the failed-tests sheet list it.
+
+A test that keeps failing for reasons outside the feature (timing, the shared beta server) can be
+quarantined while it is fixed: add the `@quarantine` tag and a comment saying why and since when.
+
+```ts
+// Quarantined 2026-11-02: the picker sometimes opens empty on CI. Fix by 2026-11-09.
+test('should …', { tag: '@quarantine' }, async ({ … }) => { … });
+```
+
+Quarantined tests are left out of every normal run, so they cannot turn the daily run red. They
+still run every day, right after the regression on CI, and their failures only warn (and go to the
+sheet). Run them locally with `npm run test:quarantine`. Fix the test within a week, then remove
+the tag. Never quarantine a test because the app has a bug: mark that with `test.fail()` instead.
+
+### GitHub summary
+
+On GitHub Actions, every run's summary page shows a table: passed, failed, flaky, known bugs and
+skipped, then each failed and flaky test with its first error line and source.
