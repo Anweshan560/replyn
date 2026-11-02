@@ -1,5 +1,12 @@
 name: Playwright Tests
 
+# What runs when:
+#   - push / pull request: quick check (smoke + API tests), a few minutes
+#   - every morning, 6:30 Nepal time: full regression (everything except the exclusive tests)
+#   - every Sunday, 5:30 Nepal time: exclusive tests (they change workspace-wide settings, so they run
+#     when nobody is working)
+#   - by hand (Actions tab > Playwright Tests > Run workflow): pick any of the above
+# Scheduled runs only start from the default branch (main), and GitHub may start them a little late.
 on:
   push:
     branches:
@@ -8,13 +15,51 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '45 0 * * *' # 06:30 Nepal time (UTC+5:45) every day; cron times are UTC
+    - cron: '45 23 * * 6' # 05:30 Nepal time every Sunday (= 23:45 UTC on Saturday)
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which tests to run
+        type: choice
+        options:
+          - quick
+          - regression
+          - exclusive
+          - all
+        default: regression
+
+# Every run uses the same shared test workspace, so never run two at once: a new run waits for
+# the one in progress instead.
+concurrency:
+  group: replyn-test-workspace
+  cancel-in-progress: false
 
 jobs:
-  smoke:
-    name: Smoke Tests
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      TEST_USERNAME: ${{ secrets.SECRETU }}
+      TEST_PASSWORD: ${{ secrets.SECRETP }}
+      # Set a repository variable TEST_WORKSPACE to change it without editing this file.
+      TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
 
     steps:
+      - name: Choose the tests to run
+        id: suite
+        run: |
+          case "${{ github.event_name }}/${{ github.event.schedule }}" in
+            "schedule/45 0 * * *") suite=regression ;;
+            "schedule/45 23 * * 6") suite=exclusive ;;
+            workflow_dispatch/*)  suite="${{ inputs.suite }}" ;;
+            *)                    suite=quick ;;
+          esac
+          echo "Running: $suite"
+          echo "name=$suite" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -30,79 +75,29 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run smoke tests
-        run: npm run test:smoke
-        env:
-          TEST_USERNAME: ${{ secrets.SECRETU }}
-          TEST_PASSWORD: ${{ secrets.SECRETP }}
+      - name: Run tests
+        run: |
+          case "${{ steps.suite.outputs.name }}" in
+            quick)      npx playwright test --project=smoke --project=api ;;
+            regression) npm run test:regression ;;
+            exclusive)  npm run test:exclusive ;;
+            all)        npm run test:all ;;
+          esac
 
-      - name: Upload smoke report
+      - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-report
+          name: ${{ steps.suite.outputs.name }}-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 14
           if-no-files-found: warn
 
-      - name: Upload smoke test results
+      - name: Upload test results (screenshots, traces)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-test-results
+          name: ${{ steps.suite.outputs.name }}-test-results
           path: test-results/
-          retention-days: 7
-          if-no-files-found: warn
-
-  regression:
-    name: Full Regression Suite
-    runs-on: ubuntu-latest
-    needs: smoke
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run regression tests
-        run: npm run test:regression
-        env:
-          TEST_USERNAME: ${{ secrets.SECRETU }}
-          TEST_PASSWORD: ${{ secrets.SECRETP }}
-
-      # Change settings the other tests rely on, so they run after the regression suite, on their own.
-      - name: Run exclusive tests (organization and workspace-wide settings)
-        if: always()
-        run: npm run test:exclusive
-        env:
-          TEST_USERNAME: ${{ secrets.SECRETU }}
-          TEST_PASSWORD: ${{ secrets.SECRETP }}
-
-      - name: Upload regression report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: regression-report
-          path: playwright-report/
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload regression test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: regression-test-results
-          path: test-results/
-          retention-days: 7
+          retention-days: 14
           if-no-files-found: warn
