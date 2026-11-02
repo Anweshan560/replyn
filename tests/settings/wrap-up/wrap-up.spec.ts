@@ -16,6 +16,13 @@ test.describe('Settings → Wrap-Up', { tag: ['@settings', '@wrap-up'] }, () => 
     closingNote = buildClosingNote();
     closingNoteId = (await closingNotesApi.createRecord(toClosingNotePayload(closingNote))).id;
     cleanup.add(`closing note ${closingNote.category}`, () => closingNotesApi.deleteIfExists(closingNoteId));
+    // The page loads the closing notes once, so wait until the server lists the new one.
+    await expect
+      .poll(async () => (await closingNotesApi.findRecord(closingNoteId))?.id, {
+        message: 'the new closing note should be listed',
+        timeout: 15_000,
+      })
+      .toBe(closingNoteId);
     cleanup.add('restore the wrap-up', await wrapUpApi.rememberCurrent());
   });
 

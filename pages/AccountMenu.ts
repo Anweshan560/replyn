@@ -26,9 +26,15 @@ export class AccountMenu {
       await this.page.keyboard.press('Escape');
       return;
     }
-    await this.switchItem.click();
     const workspaces = this.page.getByRole('group', { name: 'Workspaces' });
-    await workspaces.getByRole('menuitem', { name: workspace, exact: true }).click();
+    const item = workspaces.getByRole('menuitem', { name: workspace, exact: true });
+    // A click that lands while the menu is still opening sometimes leaves the list closed, so
+    // click again until it opens. A workspace that does not exist fails here after 30 s.
+    await expect(async () => {
+      if (!(await workspaces.isVisible())) await this.switchItem.click();
+      await expect(item).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    await item.click();
     await expect(this.page).toHaveURL('/dashboard');
 
     await this.openButton.click();

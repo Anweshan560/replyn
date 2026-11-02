@@ -147,7 +147,7 @@ npm run report
 ```
 
 This opens the HTML report: each test with its steps, and for failures a screenshot, a trace you can
-step through, and the error. On CI, download the `smoke-report` / `regression-report` artifact from the
+step through, and the error. On CI, download the `<suite>-report` artifact (e.g. `regression-report`) from the
 workflow run, unzip it, and run `npx playwright show-report <folder>`.
 
 ### Failure screenshots
@@ -164,3 +164,35 @@ test-results/failures/
 The `.txt` file holds the error, the test's file and line, and the path of its trace. On CI these are inside the
 `*-test-results` artifact. Passing `--reporter=...` on the command line replaces the configured reporters, so
 leave it out if you want these files.
+
+### Failed tests sheet
+
+After every run, each failed test is written to a shared Google Sheet (tab **Failed tests**) as a test case:
+test steps (with the failing one marked), steps to reproduce, expected and actual result, the error, the source
+line and where to find the screenshot or the CI run.
+
+- **One row per test.** If it fails again later, the same row is updated: _Last failed_, _Times failed_ and the
+  latest error. _First failed_ and the two "fill in" columns (_Bug status_, _Notes_) are never overwritten.
+- A failed row whose test passes on a later run is marked **Passing again**.
+- Known bugs marked with `test.fail()` are not added; a test that passes on retry is added as **Flaky**.
+- A problem with the sheet only prints a warning; it never fails the run.
+
+One-time setup:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project (any name), then open
+   **APIs & Services → Library**, search **Google Sheets API** and click **Enable**.
+2. **APIs & Services → Credentials → Create credentials → Service account**: give it a name (e.g.
+   `replyn-tests`) and click **Done**. Open it, go to **Keys → Add key → Create new key → JSON**. A `.json` file
+   downloads: this is a password, never commit it.
+3. Save it as `secrets/google-service-account.json` in this project (`secrets/` is ignored by git).
+4. Create a Google Sheet, click **Share** and add the service account's email (the `client_email` in the
+   `.json` file, ending in `iam.gserviceaccount.com`) as **Editor**.
+5. In `.env`, set `FAILED_TESTS_SHEET_ID` to the long id in the sheet's link
+   (`docs.google.com/spreadsheets/d/<id>/edit`) and
+   `GOOGLE_SERVICE_ACCOUNT_KEY_FILE=secrets/google-service-account.json`.
+6. For GitHub Actions: in the repository, **Settings → Secrets and variables → Actions**: add a **secret**
+   `GOOGLE_SERVICE_ACCOUNT_KEY` with the whole content of the `.json` file, and a **variable**
+   `FAILED_TESTS_SHEET_ID` with the sheet id.
+
+To see the rows without touching the sheet, set `FAILED_TESTS_SHEET_DRY_RUN=true`: they are written to
+`test-results/failed-tests-sheet.json` instead.

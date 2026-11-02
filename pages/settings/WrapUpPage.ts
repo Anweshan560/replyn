@@ -125,9 +125,15 @@ export class WrapUpPage {
 
   /** Choose the closing note the "Close conversation" step offers the agent. */
   private async chooseClosingNote(closingNote: string): Promise<void> {
-    await this.closingNotesButton.click();
     const picker = this.page.getByRole('listbox', { name: /Closing notes the agent can pick from/ });
-    await picker.getByRole('option', { name: closingNote, exact: true }).click();
+    const option = picker.getByRole('option', { name: closingNote, exact: true });
+    // On a slow machine (CI) a click that lands while the editor is still updating can leave the
+    // picker closed, so click again until it opens and lists the note.
+    await expect(async () => {
+      if (!(await picker.isVisible())) await this.closingNotesButton.click({ timeout: 5_000 });
+      await expect(option, `the picker should list "${closingNote}"`).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
+    await option.click();
     // The picker lets several notes be chosen, so it stays open: close it with Escape.
     await this.page.keyboard.press('Escape');
     await expect(picker).toBeHidden();

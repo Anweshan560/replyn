@@ -46,6 +46,9 @@ jobs:
       TEST_PASSWORD: ${{ secrets.SECRETP }}
       # Set a repository variable TEST_WORKSPACE to change it without editing this file.
       TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
+      # Failed tests are written to this Google Sheet (see README, "Failed tests sheet").
+      FAILED_TESTS_SHEET_ID: ${{ vars.FAILED_TESTS_SHEET_ID }}
+      GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
 
     steps:
       - name: Choose the tests to run

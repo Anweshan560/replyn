@@ -7,11 +7,15 @@ import { AccountMenu } from '../../pages/AccountMenu';
 setup('log in and save the session', async ({ page, loginPage }) => {
   const { email, password } = getCredentials();
 
-  await loginPage.open();
-  await loginPage.logIn(email, password);
-  await expect(page).toHaveURL('/dashboard');
+  await setup.step('log in with the test account', async () => {
+    await loginPage.open();
+    await loginPage.logIn(email, password);
+    await expect(page).toHaveURL('/dashboard');
+  });
   // The saved session includes this choice, so every test starts in the test workspace.
-  await new AccountMenu(page).switchWorkspace(env.testWorkspace);
+  await setup.step(`switch to the workspace "${env.testWorkspace}"`, () =>
+    new AccountMenu(page).switchWorkspace(env.testWorkspace),
+  );
 
   await page.context().storageState({ path: AUTH_FILE });
 });

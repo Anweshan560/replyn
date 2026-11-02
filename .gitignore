@@ -7,3 +7,6 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .env
+
+# Google service-account key for the failed-tests sheet
+/secrets/

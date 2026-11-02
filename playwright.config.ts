@@ -41,7 +41,13 @@ export default defineConfig({
   // take 10-15 s before the app even asks for its data. Each single check still has only 10 s.
   timeout: 120_000,
 
-  reporter: [['list'], ['html', { open: 'never' }], ['./reporters/failure-reporter.ts']],
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ['./reporters/failure-reporter.ts'],
+    // Writes failed tests to the shared Google Sheet as test cases (see README, "Failed tests sheet").
+    ['./reporters/failed-tests-sheet-reporter.ts'],
+  ],
   outputDir: './test-results',
 
   use: {
