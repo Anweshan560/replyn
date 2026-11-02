@@ -3,6 +3,7 @@ import { describeSettingsTableApi } from '../settingsTableSuite';
 import { API_KEYS } from '../settingsTables';
 import { toApiKeyPayload } from '../../../api/DeveloperApi';
 import { buildApiKey } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // The endpoint's create, list, get, update, delete, validation and auth; shared steps in settingsTableSuite.ts.
 describeSettingsTableApi(API_KEYS);
@@ -37,12 +38,7 @@ test.describe('API Keys API: the key itself', { tag: API_KEYS.tags }, () => {
   });
 
   test('should not return the full key once it has been created', async ({ apiKeysApi, cleanup }) => {
-    test.fail(
-      true,
-      'Known security issue (2026-10-31): GET /v1/api-keys (and GET by id) returns every key in full, ' +
-        'although the "API key created" dialog says "You will not be able to view it again". ' +
-        'Remove this line once the list masks the key.',
-    );
+    knownBug('api-keys-returned-in-full');
     const created = await test.step('create a key', () =>
       apiKeysApi.createRecord(toApiKeyPayload(buildApiKey())));
     cleanup.add(`API key ${created.name}`, () => apiKeysApi.deleteIfExists(created.id));

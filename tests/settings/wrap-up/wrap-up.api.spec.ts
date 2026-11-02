@@ -3,6 +3,7 @@ import { toClosingNotePayload } from '../../../api/SettingsApis';
 import { WRAP_UP_NAME, toWrapUpOutcomePayload, toWrapUpPayload } from '../../../api/WrapUpApi';
 import { env } from '../../../config/env';
 import { buildClosingNote, buildWrapUpOutcome } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // The workspace has one wrap-up, so these tests run one at a time in the workspace-settings
 // project, and each puts the wrap-ups back as it found them.
@@ -75,11 +76,7 @@ test.describe('Wrap-Up API', { tag: ['@settings', '@wrap-up'] }, () => {
   });
 
   test('should reject an outcome with an unknown result with 422', async ({ wrapUpApi }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): an outcome\'s result (category) is not checked, so "pending" or any other ' +
-        'text is saved, although the page only offers won, in_progress and lost. Remove this line once fixed.',
-    );
+    knownBug('wrap-up-result-not-validated');
     const outcome = { ...toWrapUpOutcomePayload(buildWrapUpOutcome(), closingNoteId), category: 'pending' };
 
     const response = await test.step('POST an outcome whose result is "pending"', () =>

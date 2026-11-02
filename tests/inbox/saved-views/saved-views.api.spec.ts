@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { toCustomViewPayload } from '../../../api/CustomViewsApi';
 import { env } from '../../../config/env';
 import { buildSavedView } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 test.describe('Saved Views API', { tag: ['@inbox', '@saved-views'] }, () => {
   test('should create a view and return every field that was sent', async ({ customViewsApi, cleanup }) => {
@@ -86,11 +87,7 @@ test.describe('Saved Views API', { tag: ['@inbox', '@saved-views'] }, () => {
     customViewsApi,
     cleanup,
   }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): an empty name and icon are reported as "must be shorter than or equal to ' +
-        '60 characters" instead of saying they are required. Remove this line once fixed.',
-    );
+    knownBug('misleading-required-field-messages');
     const response = await test.step('POST an empty body', () => customViewsApi.create({}));
     const body = await response.json();
     if (body.data?.id) cleanup.add('saved view', () => customViewsApi.deleteIfExists(body.data.id));

@@ -4,6 +4,7 @@ import { ENDPOINTS } from '../../api/ResourceApi';
 import { env } from '../../config/env';
 import { measureResponseTimes, median } from '../../utils/timing';
 import { buildContact, buildContactBatch, pickRandom } from '../../utils/testData';
+import { knownBug } from '../../utils/knownBug';
 
 /** An id in the right format that no contact has. */
 const MISSING_ID = '00000000-0000-7000-8000-000000000000';
@@ -212,11 +213,7 @@ test.describe('Contacts API', { tag: ['@contacts'] }, () => {
     });
 
     test('should reject a contact without a first name with 422', async ({ contactsApi, cleanup }) => {
-      test.fail(
-        true,
-        'Known API gap (2026-10-30): POST /v1/contacts with an empty body answers 201 and creates a ' +
-          'contact with no name, although the UI requires a first name. Remove this line once fixed.',
-      );
+      knownBug('contact-without-first-name');
       const { firstName: _omitted, ...payloadWithoutFirstName } = toContactPayload(buildContact());
 
       const response = await test.step('POST a contact with no first name', () =>
@@ -325,12 +322,7 @@ test.describe('Contacts API', { tag: ['@contacts'] }, () => {
   });
 
   test('GET /v1/contacts/segment-counts should answer 200', async ({ request, apiHeaders }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-30): the Contacts page calls this on every load and always gets 400 ' +
-        '"Validation failed (uuid is expected)", the same answer as GET /v1/contacts/not-a-uuid. The ' +
-        'request seems to be caught by the GET /v1/contacts/:id route. Remove this line once fixed.',
-    );
+    knownBug('segment-counts-always-400');
 
     const response = await test.step('GET segment-counts as the page does', async () =>
       request.get(`${env.apiUrl}${ENDPOINTS.contacts}/segment-counts`, { headers: await apiHeaders() }));

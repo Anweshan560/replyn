@@ -5,6 +5,7 @@ import { ENDPOINTS } from '../../../api/ResourceApi';
 import { recordApiCalls } from '../../../utils/network';
 import { buildPatient, nextClinicDay, toDateParam } from '../../../utils/testData';
 import { bookThroughApi, cleanupBooking, createDoctorAndTreatment } from '../bookingSetup';
+import { knownBug } from '../../../utils/knownBug';
 
 // Every test uses its own doctor and treatment, and books on the next weekday (the clinic is
 // closed at weekends), so it never touches the real calendar.
@@ -261,11 +262,7 @@ test.describe('Clinic → Appointments', { tag: ['@clinic', '@appointments'] }, 
     treatmentsApi,
     cleanup,
   }) => {
-    test.fail(
-      true,
-      'Known UI issue (2026-10-30): after Delete appointment the server deletes it, but the calendar ' +
-        'keeps showing its card (and the "1 appt" count) until the page is reloaded. Remove this line once fixed.',
-    );
+    knownBug('deleted-appointment-stays-on-calendar');
     const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
     const day = nextClinicDay();
     const patient = buildPatient();

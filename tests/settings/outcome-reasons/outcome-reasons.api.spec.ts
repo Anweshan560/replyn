@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { toOutcomeReasonPayload } from '../../../api/OutcomeReasonsApi';
 import { env } from '../../../config/env';
 import { buildOutcomeReason } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 const ALLOWED_ANSWERS =
   'each value in answers must be one of the following values: wont_come, not_interested, nothing_booked, all_done';
@@ -97,11 +98,7 @@ test.describe('Outcome Reasons API', { tag: ['@settings', '@outcome-reasons'] },
     outcomeReasonsApi,
     cleanup,
   }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): an empty label is reported as "label must be shorter than or equal to ' +
-        '80 characters" instead of saying it is required. Remove this line once fixed.',
-    );
+    knownBug('misleading-required-field-messages');
     const response = await test.step('POST an empty body', () => outcomeReasonsApi.create({}));
     const body = await response.json();
     if (body.data?.id) cleanup.add('outcome reason', () => outcomeReasonsApi.deleteIfExists(body.data.id));

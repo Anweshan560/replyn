@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { toWebhookPayload } from '../../../api/DeveloperApi';
 import { env } from '../../../config/env';
 import { WEBHOOK_EVENT, buildWebhook } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // Webhooks point at example.com, so nothing is ever delivered anywhere real.
 test.describe('Webhooks API', { tag: ['@settings', '@webhooks'] }, () => {
@@ -104,11 +105,7 @@ test.describe('Webhooks API', { tag: ['@settings', '@webhooks'] }, () => {
   }
 
   test('should reject an unknown event with 422', async ({ webhooksApi, cleanup }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): an unknown event (e.g. "contact.deleted") answers 500 "Internal server ' +
-        'error" instead of a 422 naming the allowed events. Remove this line once fixed.',
-    );
+    knownBug('webhook-unknown-event-500');
     const response = await test.step('POST a webhook for "contact.deleted"', () =>
       webhooksApi.create({ ...toWebhookPayload(buildWebhook()), filterTypes: ['contact.deleted'] }));
     const body = await response.json();

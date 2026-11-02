@@ -8,6 +8,7 @@ import {
   buildTreatment,
   pickRandom,
 } from '../../utils/testData';
+import { knownBug } from '../../utils/knownBug';
 
 /** The columns a new session shows, in order. */
 const DEFAULT_COLUMNS = [
@@ -283,11 +284,7 @@ test.describe('Contacts list', { tag: ['@contacts'] }, () => {
   });
 
   test('should keep the column choice after a reload', async ({ page, contactsPage }) => {
-    test.fail(
-      true,
-      'Known behaviour (2026-10-30): column choices are not saved anywhere (no API call, nothing in ' +
-        'local storage), so a reload brings back the defaults. Remove this line if that gets fixed.',
-    );
+    knownBug('contacts-column-choice-not-saved');
 
     await test.step('open Contacts and turn Email on', async () => {
       await contactsPage.open();

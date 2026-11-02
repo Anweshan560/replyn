@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/test';
 import { aroundNow } from '../../api/ReportsApi';
 import { env } from '../../config/env';
+import { knownBug } from '../../utils/knownBug';
 
 /** The endpoint behind each report's headline numbers, with any query it needs. */
 const SUMMARIES: { report: string; params?: Record<string, string> }[] = [
@@ -61,11 +62,7 @@ test.describe('Reports API', { tag: ['@reports'] }, () => {
   });
 
   test('should reject a range that ends before it starts with 422', async ({ reportsApi }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): a range whose end is before its start answers 200 with numbers, ' +
-        'instead of a 422. Remove this line once fixed.',
-    );
+    knownBug('reports-range-end-before-start');
     const { start, end } = aroundNow();
 
     const response = await test.step('GET the contacts summary with start and end swapped', () =>

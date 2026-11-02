@@ -103,40 +103,118 @@ File names decide how a test runs: `*.api.spec.ts` runs in the `api` project, ot
 reason says what the app does instead and when it was seen. It passes while the issue is there, and fails
 (on purpose) once the app is fixed: then delete the `test.fail()` line.
 
-## Adding a test
+## Adding tests for a feature
 
-Import `test` and `expect` from `fixtures/test` (not from `@playwright/test`), ask for the page objects and
-clients you need, and describe the behaviour with `test.step()`:
+Every feature gets **both** UI tests (what a user sees and does) and API tests (what the server
+accepts, stores and refuses). This walkthrough uses Clinic → Doctors, which follows every step.
+Copy the starter files in [`templates/new-feature/`](templates/new-feature) to begin.
+
+### 1. Put the files in the feature's folder
+
+```text
+tests/clinic/doctors/
+  doctors.spec.ts       UI tests: run in the `ui` project
+  doctors.api.spec.ts   API tests: the `.api.spec.ts` ending puts them in the `api` project
+```
+
+The folder is the area and the feature (`tests/<area>/<feature>/`). It names the failure screenshots
+and the _Area_ column of the failed-tests sheet.
+
+### 2. Describe the page in a page object (`pages/`)
+
+A page object holds every locator and action for one page, so tests read like steps and a changed
+button is fixed in one place. See `pages/clinic/DoctorsPage.ts`.
+
+- One class per page, with a short JSDoc on each public method.
+- Locators, in this order of preference: `getByRole` → `getByLabel` → `getByPlaceholder` →
+  `getByText` → `getByTestId`. CSS only when nothing else works, with a comment saying why.
+- Methods do things a user does (`openFromDashboard()`, `createRecord(data)`), and wait for the result
+  (an API response or a visible change), never a fixed time.
+
+### 3. Add an API client (`api/`)
+
+Most endpoints list, create, update and delete records: extend `ResourceApi` and you get all of
+that, plus `createRecord()` and `deleteIfExists()` for setup and cleanup. See `api/DoctorsApi.ts`:
+
+- Add the path to `ENDPOINTS` in `api/ResourceApi.ts`.
+- Write the request and response types, and a `to…Payload()` function that turns test data into the
+  API's field names.
+
+### 4. Register both in `fixtures/test.ts`
+
+Add the page object and the client to the `Fixtures` type and to `test.extend`, next to
+`doctorsPage` and `doctorsApi`. Tests then just ask for them: `async ({ doctorsPage, doctorsApi }) =>`.
+
+### 5. Build test data (`utils/testData.ts`)
+
+Add a `build…()` function that returns realistic data with a unique part, e.g.
+`` name: `Dr. ${faker.person.lastName()} ${uniqueSuffix()}` ``, so parallel tests never collide.
+
+### 6. Write the tests
 
 ```ts
-import { test, expect } from '../../fixtures/test';
-import { toDoctorPayload } from '../../api/DoctorsApi';
-import { buildDoctor } from '../../utils/testData';
+import { test, expect } from '../../../fixtures/test';
+import { toDoctorPayload } from '../../../api/DoctorsApi';
+import { buildDoctor } from '../../../utils/testData';
 
-test('should show a new doctor in the doctors list', async ({ doctorsPage, doctorsApi, cleanup }) => {
-  // 1. Arrange: create the data this test needs (the API is the fastest way).
-  const doctor = await test.step('create a doctor', () =>
-    doctorsApi.createRecord(toDoctorPayload(buildDoctor())));
-  // 2. Always register cleanup, so the test leaves nothing behind even if it fails.
-  cleanup.add(`doctor "${doctor.name}"`, () => doctorsApi.deleteIfExists(doctor.id));
+test.describe('Clinic → Doctors', { tag: ['@clinic', '@doctors'] }, () => {
+  test('should show a new doctor in the list', async ({ doctorsPage, doctorsApi, cleanup }) => {
+    // Arrange through the API: it is fast. Register cleanup right away, so the test leaves nothing
+    // behind even if it fails.
+    const doctor = await test.step('create a doctor (through the API)', () =>
+      doctorsApi.createRecord(toDoctorPayload(buildDoctor())));
+    cleanup.add(`doctor ${doctor.id}`, () => doctorsApi.deleteIfExists(doctor.id));
 
-  // 3. Act and assert.
-  await test.step('open the doctors list', () => doctorsPage.openList());
-  await test.step('the doctor is listed', async () => {
-    await expect(doctorsPage.rowFor(doctor.name)).toBeVisible();
+    await test.step('open Clinic → Doctors', () => doctorsPage.openFromDashboard());
+    await test.step('the doctor is listed', async () => {
+      await expect(doctorsPage.rowFor(doctor.name)).toBeVisible();
+    });
   });
 });
 ```
 
-Guidelines:
-
+- **Import `test` and `expect` from `fixtures/test`**, not from `@playwright/test`.
 - **Name tests like sentences:** `should <expected result> when <action>`.
-- **Locators belong in page objects.** Prefer `getByRole` > `getByLabel` > `getByPlaceholder` > `getByText` > `getByTestId`.
-  Use CSS only when nothing else works, and add a comment explaining why.
-- **Never use `waitForTimeout`.** Use `expect(...)` (which retries) or wait for a specific API response
+- **Write every step with `test.step('…')`.** Step names become the _Test steps_ and _Steps to
+  reproduce_ in the failed-tests sheet, so write them for a person reading a bug report:
+  `open Clinic → Doctors`, `the doctor is listed`.
+- **Every test creates its own data and cleans it up** with `cleanup.add()`. Never rely on data a
+  person or another test made.
+- **Never use `waitForTimeout`.** Use `expect(...)`, which retries, or wait for an API response
   (`waitForApiResponse` in `utils/network.ts`).
-- **Every test creates its own data** with `utils/testData.ts` and cleans it up with `cleanup.add()`.
-- A new page? Add a class in `pages/`, register it in `fixtures/test.ts`, and give every public method a short JSDoc.
+- **Tags:** the area and feature on the `describe` (`@clinic`, `@doctors`). Add `@smoke` to the one
+  test per area that proves the page works, for the quick check on every push.
+
+What the API tests should cover, for each endpoint: create (201 and every field stored), list, get,
+update, delete, validation (422 with the right message for missing or wrong fields) and a request
+without a login token (401). `doctors.api.spec.ts` has all of them.
+
+### 7. Special cases
+
+| Situation                                                                | What to do                                                                                                                                                                     |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The test changes something the whole workspace shares (hours, SLAs, AI…) | Put it under one of the folders in `EXCLUSIVE_TESTS` in `playwright.config.ts` and call `runOnlyOnItsOwn()`; save the current value first and restore it with `cleanup.add()`. |
+| A setting the workspace has only one of (like Wrap-Up)                   | Add the folder to `WORKSPACE_SETTINGS_TESTS`: those run one at a time next to the others.                                                                                      |
+| The test finds a real bug in the app                                     | Add the bug to `scripts/known-bugs.json`, call `knownBug('<key>')` first thing in the test, and create its issue: `npm run known-bugs -- --create`. See "Known bugs".          |
+| The test fails now and then for reasons outside the app                  | Fix it. While you do, tag it `@quarantine`. See "Flaky tests".                                                                                                                 |
+
+### 8. Run it
+
+```bash
+npx playwright test tests/clinic/doctors              # the whole feature, UI and API
+npx playwright test tests/clinic/doctors --headed     # watch the browser
+npx playwright test -g "new doctor"                   # one test, by part of its name
+npx playwright test tests/clinic/doctors --ui         # step through it in Playwright's UI mode
+npx playwright show-trace test-results/<folder>/trace.zip   # replay a failure
+```
+
+### 9. Checklist before you commit
+
+- [ ] UI tests **and** API tests for the feature.
+- [ ] `npm run typecheck` and `npm run format:check` pass.
+- [ ] The new tests pass **3 times in a row**: `npx playwright test tests/<area>/<feature> --repeat-each=3`.
+- [ ] Nothing is left behind: after a run, the records the tests created are gone from the app.
+- [ ] Step names read like a bug report, and the test name says what should happen.
 
 ## Viewing the report
 
@@ -213,9 +291,37 @@ test('should …', { tag: '@quarantine' }, async ({ … }) => { … });
 Quarantined tests are left out of every normal run, so they cannot turn the daily run red. They
 still run every day, right after the regression on CI, and their failures only warn (and go to the
 sheet). Run them locally with `npm run test:quarantine`. Fix the test within a week, then remove
-the tag. Never quarantine a test because the app has a bug: mark that with `test.fail()` instead.
+the tag. Never quarantine a test because the app has a bug: mark that with `knownBug()` instead.
 
 ### GitHub summary
 
 On GitHub Actions, every run's summary page shows a table: passed, failed, flaky, known bugs and
 skipped, then each failed and flaky test with its first error line and source.
+
+### Known bugs
+
+When a test finds a real bug in the app, the test stays as it is (it checks the correct behaviour)
+and is marked as hitting a known bug, so the run stays green:
+
+```ts
+test('should reject an empty workspace name with 422', async ({ workspaceApi }) => {
+  knownBug('workspace-empty-name');
+  …
+});
+```
+
+Every known bug is described once in [`scripts/known-bugs.json`](scripts/known-bugs.json): title,
+date found, steps to reproduce, expected and actual result, the tests that check it, and its GitHub
+issue. To add one, add an entry there, call `knownBug('<key>')` first thing in the test, and create
+the issue:
+
+```bash
+npm run known-bugs                         # list every known bug and its issue
+npm run known-bugs -- --create --dry-run   # show the issues that would be created
+npm run known-bugs -- --create             # create them (GitHub CLI: winget install GitHub.cli, gh auth login)
+```
+
+**When the bug is fixed**, its test passes, and the run says so: the GitHub summary lists it under
+"Known bugs that now pass" and the failed-tests sheet marks it **Known bug fixed?**. Check the
+issue, close it, remove the `knownBug(...)` line and the entry in `known-bugs.json`: from then on the
+test guards against the bug coming back.

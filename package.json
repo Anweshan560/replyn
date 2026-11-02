@@ -32,6 +32,7 @@
     "test:inbox": "playwright test tests/inbox",
     "test:reports": "playwright test tests/reports",
     "test:report-numbers": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/reports/numbers",
+    "known-bugs": "node scripts/known-bugs.mjs",
     "test:quarantine": "cross-env QUARANTINE_TESTS=true playwright test",
     "test:exclusive": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive",
     "test:organization": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/settings/organization",

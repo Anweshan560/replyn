@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { runOnlyOnItsOwn } from '../../exclusive';
 import { env } from '../../../config/env';
 import { buildFollowUpCreditDays, buildWorkspaceName } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // The test workspace itself: every test puts its name and settings back afterwards.
 test.describe('Workspace API', { tag: ['@settings', '@workspace'] }, () => {
@@ -84,11 +85,7 @@ test.describe('Workspace API', { tag: ['@settings', '@workspace'] }, () => {
   }
 
   test('should reject an empty workspace name with 422', async ({ workspaceApi }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): PATCH with an empty name answers 200 and quietly keeps the old name, ' +
-        'instead of a 422 saying the name is required. Remove this line once fixed.',
-    );
+    knownBug('workspace-empty-name');
     const response = await test.step('PATCH an empty name', () => workspaceApi.update({ name: '' }));
 
     await test.step('responds 422', () => expect(response.status()).toBe(422));

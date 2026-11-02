@@ -3,6 +3,7 @@ import { fullName, toContactPayload } from '../../api/ContactsApi';
 import { ENDPOINTS } from '../../api/ResourceApi';
 import { waitForApiResponse } from '../../utils/network';
 import { buildContact, buildContactBatch } from '../../utils/testData';
+import { knownBug } from '../../utils/knownBug';
 
 // Every test works on a contact it creates through the API, so blocking, opting out and messaging
 // never touch real contacts. Message only opens the conversation; it sends nothing.
@@ -119,12 +120,7 @@ test.describe('Contacts → row actions', { tag: ['@contacts'] }, () => {
     contactsApi,
     cleanup,
   }) => {
-    test.fail(
-      true,
-      'Known behaviour (2026-10-30): the main list does not filter out blocked contacts (its search ' +
-        'sends no "blocked" flag), so a blocked contact stays under Everyone as well as in More → ' +
-        'Blocked. Confirm with product whether blocking should take it off the main list.',
-    );
+    knownBug('blocked-contacts-in-main-list');
     const contact = buildContact();
     const name = fullName(contact);
     const created = await test.step('create a contact and block it (through the API)', async () => {

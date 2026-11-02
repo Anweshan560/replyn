@@ -10,6 +10,7 @@ import {
   cleanupStrayContacts,
   createDoctorAndTreatment,
 } from '../bookingSetup';
+import { knownBug } from '../../../utils/knownBug';
 
 /** An id in the right format that no record has. */
 const MISSING_ID = '00000000-0000-7000-8000-000000000000';
@@ -328,11 +329,7 @@ test.describe('Appointments API', { tag: ['@clinic', '@appointments'] }, () => {
       treatmentsApi,
       cleanup,
     }) => {
-      test.fail(
-        true,
-        'Known API bug (2026-10-30): a rejected booking (e.g. 404 "Doctor not found" or 400 "startDate ' +
-          'must be before endDate") still creates a contact for the new patient. Remove this line once fixed.',
-      );
+      knownBug('rejected-booking-creates-contact');
       const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
       const patient = buildPatient();
       const payload = toAppointmentPayload(
@@ -361,12 +358,7 @@ test.describe('Appointments API', { tag: ['@clinic', '@appointments'] }, () => {
       treatmentsApi,
       cleanup,
     }) => {
-      test.fail(
-        true,
-        "Known API gap (2026-10-30): a booking with a treatment the doctor doesn't offer is accepted " +
-          "(201), although the New appointment dialog only lists the doctor's own treatments. Confirm " +
-          'with product, then remove this line once the API refuses it.',
-      );
+      knownBug('booking-accepts-treatment-of-other-doctor');
       const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
       const other = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
       const payload = toAppointmentPayload(

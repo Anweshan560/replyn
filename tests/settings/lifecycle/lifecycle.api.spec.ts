@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { runOnlyOnItsOwn } from '../../exclusive';
 import { env } from '../../../config/env';
 import { buildLifecycleStage } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // New stages go at the end of the lost stages, where they don't move the pipeline the contacts
 // tests use; the tests still run on their own, and remove what they add.
@@ -89,11 +90,7 @@ test.describe('Lifecycle stages API', { tag: ['@settings', '@lifecycle'] }, () =
     lifecyclesApi,
     apiHeaders,
   }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): GET /v1/lifecycles without ?contactCount= answers 400 "Validation ' +
-        'failed (boolean string is expected)"; the parameter should be optional. Remove this line once fixed.',
-    );
+    knownBug('lifecycles-contactcount-required');
     const response = await test.step('GET the list with no query', async () =>
       request.get(`${env.apiUrl}${lifecyclesApi.path}`, { headers: await apiHeaders() }));
 

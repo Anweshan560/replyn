@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures/test';
 import { toCustomViewPayload } from '../../../api/CustomViewsApi';
 import { buildSavedView } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 test.describe('Inbox → Views', { tag: ['@inbox', '@saved-views'] }, () => {
   test(
@@ -97,11 +98,7 @@ test.describe('Inbox → Views', { tag: ['@inbox', '@saved-views'] }, () => {
   });
 
   test('should show the inbox when /inbox is opened without a workspace', async ({ page }) => {
-    test.fail(
-      true,
-      'Known bug (2026-10-31): opening /inbox directly (e.g. from a bookmark) shows "Something went wrong" ' +
-        'instead of the inbox; only /inbox/<workspace id>, which the sidebar links to, works. Remove this line once fixed.',
-    );
+    knownBug('inbox-url-without-workspace');
     await test.step('open /inbox', () => page.goto('/inbox'));
     await test.step('the inbox is shown, not an error page', async () => {
       await expect(page.getByRole('heading', { name: 'Something went wrong' })).toHaveCount(0);

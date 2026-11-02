@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { toContactFieldPayload } from '../../../api/ContactFieldsApi';
 import { env } from '../../../config/env';
 import { CONTACT_FIELD_TYPES, buildContactField, type ContactFieldTypeName } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // Every test archives and then permanently deletes what it creates, so no field is left behind.
 test.describe('Contact Fields API', { tag: ['@settings', '@contact-fields'] }, () => {
@@ -173,11 +174,7 @@ test.describe('Contact Fields API', { tag: ['@settings', '@contact-fields'] }, (
     contactFieldsApi,
     cleanup,
   }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): an empty label is reported as "label must be shorter than or equal to ' +
-        '255 characters" instead of saying it is required. Remove this line once fixed.',
-    );
+    knownBug('misleading-required-field-messages');
     const response = await test.step('POST an empty body', () => contactFieldsApi.create({}));
     const body = await response.json();
     if (body.data?.id) cleanup.add('contact field', () => contactFieldsApi.deleteIfExists(body.data.id));

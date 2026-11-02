@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { toRolePayload } from '../../../api/RolesApi';
 import { env } from '../../../config/env';
 import { buildRole, buildWorkspaceInvitee } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // Tests only change roles they create; built-in roles are read, never changed or deleted.
 test.describe('Roles API', { tag: ['@settings', '@roles'] }, () => {
@@ -78,11 +79,7 @@ test.describe('Roles API', { tag: ['@settings', '@roles'] }, () => {
   });
 
   test('should rename a role without resending its permissions', async ({ rolesApi, cleanup }) => {
-    test.fail(
-      true,
-      'Known API bug (2026-10-31): PATCH on a role answers 422 unless `permissions` is sent too, and the ' +
-        'message lists every valid permission instead of saying the field is missing. Remove this line once fixed.',
-    );
+    knownBug('role-rename-needs-permissions');
     const agent = await rolesApi.builtIn('Agent');
     const created = await test.step('create a role', () =>
       rolesApi.createRecord(toRolePayload(buildRole(), agent.permissions)));

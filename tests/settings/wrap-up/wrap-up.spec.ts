@@ -4,6 +4,7 @@ import { ENDPOINTS } from '../../../api/ResourceApi';
 import { toWrapUpOutcomePayload } from '../../../api/WrapUpApi';
 import { recordApiCalls } from '../../../utils/network';
 import { buildClosingNote, buildWrapUpOutcome, type ClosingNoteData } from '../../../utils/testData';
+import { knownBug } from '../../../utils/knownBug';
 
 // The workspace has one wrap-up, so these tests run one at a time in the workspace-settings
 // project, and each puts the wrap-up back as it found it.
@@ -131,11 +132,7 @@ test.describe('Settings → Wrap-Up', { tag: ['@settings', '@wrap-up'] }, () => 
     wrapUpPage,
     wrapUpApi,
   }) => {
-    test.fail(
-      true,
-      'Known bug (2026-10-31): the API accepts outcomes and steps without an `id`, but the page then marks ' +
-        'such an outcome "Needs attention" on Save, shows no reason, and saves nothing. Remove this line once fixed.',
-    );
+    knownBug('wrap-up-outcome-without-ids');
     const original = buildWrapUpOutcome();
     await test.step('add an outcome without ids (through the API)', () =>
       wrapUpApi.addOutcome(toWrapUpOutcomePayload(original, closingNoteId, { withIds: false })));

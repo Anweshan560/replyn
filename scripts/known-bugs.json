@@ -1,0 +1,246 @@
+{
+  "repo": "Anweshan560/replyn",
+  "environment": "beta: https://beta.replyn.dev (app), https://api.replyn.dev (API)",
+  "bugs": [
+    {
+      "key": "api-keys-returned-in-full",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "security", "api"],
+      "title": "Security: GET /v1/api-keys returns every API key in full",
+      "steps": [
+        "Settings → API keys → create a key. The dialog says \"You will not be able to view it again\".",
+        "Call GET /v1/api-keys (or GET /v1/api-keys/<id>) with a normal login token."
+      ],
+      "expected": "The list shows the key masked (e.g. only the last 4 characters); the full key is only returned once, when it is created.",
+      "actual": "The list and GET by id return every key in full, so anyone who can read the list can copy any key.",
+      "tests": [
+        "tests/settings/api-keys/api-keys.api.spec.ts › should not return the full key once it has been created"
+      ]
+    },
+    {
+      "key": "rejected-booking-creates-contact",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A rejected booking still creates a contact for the new patient",
+      "steps": [
+        "POST /v1/clinics/appointments for a new patient with an unknown doctorId (or with startDate after endDate).",
+        "The API answers 404 \"Doctor not found\" (or 400 \"startDate must be before endDate\").",
+        "Search contacts for the patient's name."
+      ],
+      "expected": "A rejected booking changes nothing: no contact is created.",
+      "actual": "A contact for the patient is created anyway, so failed bookings leave stray contacts behind.",
+      "tests": [
+        "tests/clinic/appointments/appointments.api.spec.ts › should not leave a contact behind when a booking is rejected"
+      ]
+    },
+    {
+      "key": "booking-accepts-treatment-of-other-doctor",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "api", "needs-product-decision"],
+      "title": "Booking accepts a treatment the doctor doesn't offer",
+      "steps": [
+        "Have doctor A with treatment X, and doctor B with treatment Y.",
+        "POST /v1/clinics/appointments with doctor A and treatment Y."
+      ],
+      "expected": "422: the treatment is not offered by this doctor (the New appointment dialog only lists the doctor's own treatments).",
+      "actual": "201: the appointment is booked. Please confirm with product whether this should be allowed.",
+      "tests": [
+        "tests/clinic/appointments/appointments.api.spec.ts › should reject a treatment the doctor doesn't offer"
+      ]
+    },
+    {
+      "key": "deleted-appointment-stays-on-calendar",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "ui"],
+      "title": "Deleted appointment stays on the calendar until the page is reloaded",
+      "steps": [
+        "Clinic → Appointments: open an appointment on the calendar.",
+        "Delete appointment and confirm."
+      ],
+      "expected": "The card and the day's \"1 appt\" count disappear straight away.",
+      "actual": "The server deletes it, but the card and the count stay until the page is reloaded.",
+      "tests": [
+        "tests/clinic/appointments/appointments.spec.ts › should take a deleted appointment off the calendar straight away"
+      ]
+    },
+    {
+      "key": "contacts-column-choice-not-saved",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "ui"],
+      "title": "Contacts: column choices are lost after a reload",
+      "steps": ["Contacts → Columns: hide or show a column.", "Reload the page."],
+      "expected": "The list keeps the chosen columns.",
+      "actual": "The default columns come back. The choice is not saved anywhere (no API call, nothing in local storage).",
+      "tests": ["tests/contacts/contacts-list.spec.ts › should keep the column choice after a reload"]
+    },
+    {
+      "key": "blocked-contacts-in-main-list",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "ui", "needs-product-decision"],
+      "title": "Blocked contacts still appear under Everyone in Contacts",
+      "steps": ["Block a contact.", "Open Contacts → Everyone."],
+      "expected": "The blocked contact appears only under More → Blocked.",
+      "actual": "It is listed under Everyone as well (the list's search sends no \"blocked\" filter). Please confirm the intended behaviour with product.",
+      "tests": [
+        "tests/contacts/contacts-row-actions.spec.ts › should hide a blocked contact from the main contact list"
+      ]
+    },
+    {
+      "key": "contact-without-first-name",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "POST /v1/contacts accepts a contact without a first name",
+      "steps": ["POST /v1/contacts without firstName (even an empty body {})."],
+      "expected": "422 naming firstName as required, as the Create contact form does.",
+      "actual": "201: a contact with no name is created.",
+      "tests": ["tests/contacts/contacts.api.spec.ts › should reject a contact without a first name with 422"]
+    },
+    {
+      "key": "segment-counts-always-400",
+      "issue": null,
+      "found": "2026-10-30",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "GET /v1/contacts/segment-counts always answers 400 (called on every Contacts page load)",
+      "steps": ["Open Contacts, or call GET /v1/contacts/segment-counts."],
+      "expected": "200 with the segment counts.",
+      "actual": "400 \"Validation failed (uuid is expected)\", the same answer as GET /v1/contacts/not-a-uuid: the request seems to be caught by the GET /v1/contacts/:id route.",
+      "tests": ["tests/contacts/contacts.api.spec.ts › GET /v1/contacts/segment-counts should answer 200"]
+    },
+    {
+      "key": "inbox-url-without-workspace",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "ui"],
+      "title": "Opening /inbox directly shows \"Something went wrong\"",
+      "steps": ["Log in.", "Go to https://beta.replyn.dev/inbox directly (e.g. from a bookmark)."],
+      "expected": "The inbox of the current workspace opens.",
+      "actual": "\"Something went wrong\". Only /inbox/<workspace id>, which the sidebar links to, works.",
+      "tests": [
+        "tests/inbox/saved-views/saved-views.spec.ts › should show the inbox when /inbox is opened without a workspace"
+      ]
+    },
+    {
+      "key": "reports-range-end-before-start",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Reports accept a date range that ends before it starts",
+      "steps": ["GET /v1/reports/contacts/summary with start and end swapped (end before start)."],
+      "expected": "422: the range is invalid.",
+      "actual": "200 with numbers.",
+      "tests": [
+        "tests/reports/reports.api.spec.ts › should reject a range that ends before it starts with 422"
+      ]
+    },
+    {
+      "key": "lifecycles-contactcount-required",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "GET /v1/lifecycles fails without the optional ?contactCount= parameter",
+      "steps": ["GET /v1/lifecycles with no query string."],
+      "expected": "200 with the lifecycle stages; contactCount is optional.",
+      "actual": "400 \"Validation failed (boolean string is expected)\".",
+      "tests": [
+        "tests/settings/lifecycle/lifecycle.api.spec.ts › should list the stages without asking for contact counts"
+      ]
+    },
+    {
+      "key": "role-rename-needs-permissions",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Renaming a role fails unless its permissions are sent again",
+      "steps": [
+        "Create a custom role.",
+        "PATCH /v1/workspaces/<id>/roles/<role id> with only { \"name\": \"New name\" }."
+      ],
+      "expected": "200: the role is renamed and keeps its permissions.",
+      "actual": "422, and the message lists every valid permission instead of saying `permissions` is missing.",
+      "tests": [
+        "tests/settings/roles/roles.api.spec.ts › should rename a role without resending its permissions"
+      ]
+    },
+    {
+      "key": "webhook-unknown-event-500",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Creating a webhook with an unknown event crashes with 500",
+      "steps": [
+        "POST /v1/webhooks/endpoints with filterTypes: [\"contact.deleted\"] (not an allowed event)."
+      ],
+      "expected": "422 naming the allowed events (see /v1/webhooks/event-types).",
+      "actual": "500 \"Internal server error\".",
+      "tests": ["tests/settings/webhooks/webhooks.api.spec.ts › should reject an unknown event with 422"]
+    },
+    {
+      "key": "workspace-empty-name",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Saving an empty workspace name answers 200 and silently does nothing",
+      "steps": ["PATCH /v1/workspaces/<id> with { \"name\": \"\" }."],
+      "expected": "422: the name is required.",
+      "actual": "200, and the old name is quietly kept, so the caller thinks it was saved.",
+      "tests": [
+        "tests/settings/workspace/workspace.api.spec.ts › should reject an empty workspace name with 422"
+      ]
+    },
+    {
+      "key": "wrap-up-result-not-validated",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Wrap-up outcome result (category) is not validated",
+      "steps": ["Save the wrap-up (POST /v1/wrap-up) with an outcome whose category is \"pending\"."],
+      "expected": "422: the result must be won, in_progress or lost (what the page offers).",
+      "actual": "Saved as \"pending\"; any text is accepted.",
+      "tests": [
+        "tests/settings/wrap-up/wrap-up.api.spec.ts › should reject an outcome with an unknown result with 422"
+      ]
+    },
+    {
+      "key": "wrap-up-outcome-without-ids",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "ui", "api"],
+      "title": "Wrap-Up: outcomes saved without ids show \"Needs attention\" and can't be saved",
+      "steps": [
+        "Save the wrap-up through the API with an outcome and step that have no `id` (the API accepts this).",
+        "Open Settings → Wrap-Up, change that outcome and press Save changes."
+      ],
+      "expected": "The change is saved (or the API refuses outcomes without ids in the first place).",
+      "actual": "The outcome is marked \"Needs attention\" with no reason shown, and nothing is saved.",
+      "tests": [
+        "tests/settings/wrap-up/wrap-up.spec.ts › should save an edit to an outcome that was created through the API without ids"
+      ]
+    },
+    {
+      "key": "misleading-required-field-messages",
+      "issue": null,
+      "found": "2026-10-31",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Empty required fields are reported as \"too long\" (4 endpoints)",
+      "steps": [
+        "POST an empty body {} to /v1/custom-views, /v1/contact-fields and /v1/outcome-reasons.",
+        "PUT an empty list [] to /v1/workspaces/<id>/slas."
+      ],
+      "expected": "422 saying the field is required, e.g. \"name should not be empty\", \"label should not be empty\", \"clocks should not be empty\".",
+      "actual": "422 with a message describing the opposite problem: \"name must be shorter than or equal to 60 characters\" (views), \"label must be shorter than or equal to 255 characters\" (contact fields), \"... 80 characters\" (outcome reasons), \"clocks must contain no more than 6 elements\" (SLAs).",
+      "tests": [
+        "tests/inbox/saved-views/saved-views.api.spec.ts › should reject an empty view with 422 saying the name and icon are required",
+        "tests/settings/contact-fields/contact-fields.api.spec.ts › should reject an empty field with 422 naming the label and type",
+        "tests/settings/outcome-reasons/outcome-reasons.api.spec.ts › should reject an empty reason with 422 naming the label and answers",
+        "tests/settings/sla/sla.api.spec.ts › should reject an empty list of clocks with a clear 422"
+      ]
+    }
+  ]
+}

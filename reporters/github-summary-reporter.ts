@@ -20,7 +20,10 @@ export default class GithubSummaryReporter implements Reporter {
 
     const tests = this.suite.allTests();
     if (!tests.some((test) => test.results.length)) return; // nothing ran, e.g. `--list`
-    const failed = tests.filter((test) => test.outcome() === 'unexpected');
+    const unexpected = tests.filter((test) => test.outcome() === 'unexpected');
+    // A known bug (knownBug / test.fail) whose test now passes: the bug is probably fixed.
+    const fixedBugs = unexpected.filter(isFixedKnownBug);
+    const failed = unexpected.filter((test) => !isFixedKnownBug(test));
     const flaky = tests.filter((test) => test.outcome() === 'flaky');
     const skipped = tests.filter((test) => test.outcome() === 'skipped');
     const expected = tests.filter((test) => test.outcome() === 'expected');
@@ -29,9 +32,14 @@ export default class GithubSummaryReporter implements Reporter {
     const passed = expected.length - knownBugs.length;
     const projects = [...new Set(tests.map((test) => test.parent.project()?.name))].join(', ');
 
-    const icon = failed.length ? '❌' : flaky.length ? '⚠️' : '✅';
+    const icon = failed.length ? '❌' : flaky.length || fixedBugs.length ? '⚠️' : '✅';
+    const headline = failed.length
+      ? `${failed.length} failed`
+      : fixedBugs.length
+        ? `${fixedBugs.length} known bug(s) may be fixed`
+        : 'all passed';
     const lines = [
-      `## ${icon} Playwright: ${failed.length ? `${failed.length} failed` : 'all passed'} (${projects})`,
+      `## ${icon} Playwright: ${headline} (${projects})`,
       '',
       '| Passed | Failed | Flaky | Known bugs | Skipped | Time |',
       '|---|---|---|---|---|---|',
@@ -39,6 +47,25 @@ export default class GithubSummaryReporter implements Reporter {
       '',
     ];
 
+    if (fixedBugs.length) {
+      lines.push(
+        '### 🎉 Known bugs that now pass (probably fixed)',
+        '',
+        'These tests were expected to fail because of a known bug, but passed. Check the issue: if the ' +
+          'bug is fixed, close the issue and remove the `knownBug(...)` line from the test.',
+        '',
+        '| Test | Issue | Source |',
+        '|---|---|---|',
+        ...fixedBugs.map((test) => {
+          const issue = [...test.annotations, ...(test.results.at(-1)?.annotations ?? [])].find(
+            (annotation) => annotation.type === 'known bug',
+          )?.description;
+          const [, , file, ...titles] = test.titlePath();
+          return `| ${escape(titles.join(' › '))} | ${escape(issue ?? '-')} | \`${file.replace(/\\/g, '/')}:${test.location.line}\` |`;
+        }),
+        '',
+      );
+    }
     if (failed.length) lines.push('### Failed', '', ...table(failed), '');
     if (flaky.length) {
       lines.push('### Flaky (failed, then passed on retry)', '', ...table(flaky), '');
@@ -84,4 +111,9 @@ function table(tests: TestCase[]): string[] {
 /** Keep table cells on one line and stop "|" from splitting them. */
 function escape(text: string): string {
   return text.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+}
+
+/** A test expected to fail (a known bug) that passed instead. */
+export function isFixedKnownBug(test: TestCase): boolean {
+  return test.expectedStatus === 'failed' && test.results.at(-1)?.status === 'passed';
 }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { FullConfig, Reporter, Suite, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
 import { env } from '../config/env';
 import { SheetTab, readServiceAccount } from './googleSheets';
+import { isFixedKnownBug } from './github-summary-reporter';
 
 /**
  * After every run, write each failed test to a Google Sheet as a test case: its steps, steps to
@@ -98,7 +99,8 @@ export default class FailedTestsSheetReporter implements Reporter {
     for (const test of this.suite.allTests()) {
       const outcome = test.outcome();
       if (outcome === 'unexpected' || outcome === 'flaky') {
-        failed.push(this.row(test, outcome === 'flaky' ? 'Flaky' : 'Failed'));
+        const status = isFixedKnownBug(test) ? 'Known bug fixed?' : outcome === 'flaky' ? 'Flaky' : 'Failed';
+        failed.push(this.row(test, status));
       } else if (outcome === 'expected' && test.results.at(-1)?.status === 'passed') {
         passed.add(this.testId(test));
       }
@@ -181,7 +183,7 @@ export default class FailedTestsSheetReporter implements Reporter {
     return `${file.replace(/\\/g, '/')} › ${titles.join(' › ')} [${project}]`;
   }
 
-  private row(test: TestCase, status: 'Failed' | 'Flaky'): Row {
+  private row(test: TestCase, status: 'Failed' | 'Flaky' | 'Known bug fixed?'): Row {
     // For a flaky test, describe the attempt that failed, not the retry that passed.
     const result =
       [...test.results]
@@ -212,6 +214,15 @@ export default class FailedTestsSheetReporter implements Reporter {
     row[COLUMN['Steps to reproduce']] = cell(this.reproduce(steps, failing, isApi, result));
     row[COLUMN['Expected result']] = cell(expected);
     row[COLUMN['Actual result']] = cell(actual);
+    if (status === 'Known bug fixed?') {
+      const issue = [...test.annotations, ...result.annotations].find(
+        (annotation) => annotation.type === 'known bug',
+      )?.description;
+      row[COLUMN['Expected result']] = 'Known bug: this test is expected to fail until the bug is fixed.';
+      row[COLUMN['Actual result']] =
+        `It passed, so the bug looks fixed. Check the issue (${issue ?? 'see scripts/known-bugs.json'}), ` +
+        'close it, and remove the knownBug(...) line from the test.';
+    }
     row[COLUMN['Error details']] = cell(
       error || `Test ended as "${result.status}" without an error message.`,
     );
