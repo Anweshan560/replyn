@@ -257,6 +257,38 @@
       "tests": [
         "tests/permissions/agent-access.api.spec.ts › should not let an Agent change the workspace settings"
       ]
+    },
+    {
+      "key": "workflow-patch-skips-validation",
+      "issue": null,
+      "found": "2026-11-03",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A workflow with validation errors can be switched on with PATCH",
+      "steps": [
+        "Create a workflow that has only a trigger (no action step). The API lists \"Workflow must have at least one action step\" in validationErrors.",
+        "POST /v1/workflows/<id>/activate (what the Live switch sends): 400 \"Workflow validation failed\", as expected.",
+        "PATCH /v1/workflows/<id> with { \"isActive\": true }."
+      ],
+      "expected": "PATCH refuses to activate it too (400 \"Workflow validation failed\"), so a broken workflow can never run.",
+      "actual": "200, and the workflow is active while validationErrors still lists the problem. Any API client (or a custom script) can switch on a workflow the page refuses to activate.",
+      "tests": [
+        "tests/workflows/workflows.api.spec.ts › should not let PATCH activate a workflow that has validation errors"
+      ]
+    },
+    {
+      "key": "channels-count-mismatch",
+      "issue": null,
+      "found": "2026-11-03",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "GET /v1/channels says there are 12 channels but returns none",
+      "steps": [
+        "In a workspace without channels (\"Workspace for reports testing\"), call GET /v1/channels (with or without ?limit=100&page=1)."
+      ],
+      "expected": "meta.count matches the channels returned (0 here), or the channels are returned.",
+      "actual": "result is [] while meta.count is 12 and nextPage is null. The count seems to include channels of other workspaces in the organization, so anything that pages or counts with it is wrong.",
+      "tests": [
+        "tests/broadcasts/broadcasts.api.spec.ts › should report the same channel count as the channels it returns"
+      ]
     }
   ]
 }

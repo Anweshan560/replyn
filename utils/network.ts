@@ -23,6 +23,23 @@ export function waitForApiResponse(
 }
 
 /**
+ * Wait for the page's next GET of `apiPath` whose query matches `query` (a value of null means the
+ * parameter must be absent). Lists that refetch on every keystroke or tab can answer out of
+ * order, so matching on the query makes sure it is the answer to this action, not an earlier one.
+ */
+export function waitForListResponse(
+  page: Page,
+  apiPath: string,
+  query: Record<string, string | null>,
+): Promise<Response> {
+  return page.waitForResponse((response) => {
+    if (!isApiCall(response.request(), 'GET', apiPath)) return false;
+    const params = new URL(response.url()).searchParams;
+    return Object.entries(query).every(([name, value]) => params.get(name) === value);
+  });
+}
+
+/**
  * Start recording the page's calls to one API endpoint.
  * @returns a list that fills up as matching requests are sent, e.g. to prove none were.
  */

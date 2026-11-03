@@ -24,6 +24,9 @@ import { AssignmentApi, SlasApi, WorkspaceApi } from '../api/WorkspaceApi';
 import { RolesApi, WorkspaceUsersApi } from '../api/RolesApi';
 import { ReportsApi } from '../api/ReportsApi';
 import { WrapUpApi } from '../api/WrapUpApi';
+import { WorkflowsApi } from '../api/WorkflowsApi';
+import { BroadcastsApi, ChannelsApi } from '../api/BroadcastsApi';
+import { SidebarApi } from '../api/SidebarApi';
 import { env } from '../config/env';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SavedViewsPage } from '../pages/inbox/SavedViewsPage';
@@ -54,6 +57,9 @@ import { RolesPage } from '../pages/settings/RolesPage';
 import { DashboardPage, ReportsPage } from '../pages/reports/ReportsPage';
 import { WorkspaceUsersPage } from '../pages/settings/WorkspaceUsersPage';
 import { WebsitesPage } from '../pages/settings/WebsitesPage';
+import { WorkflowsPage } from '../pages/workflows/WorkflowsPage';
+import { BroadcastsPage, NewBroadcastForm } from '../pages/broadcasts/BroadcastsPage';
+import { Sidebar } from '../pages/Sidebar';
 
 /** Collects clean-up actions and runs them after the test, even when the test failed. */
 export type Cleanup = {
@@ -117,6 +123,14 @@ type Fixtures = {
   workspaceUsersPage: WorkspaceUsersPage;
   workspaceUsersApi: WorkspaceUsersApi;
   customViewsApi: CustomViewsApi;
+  workflowsPage: WorkflowsPage;
+  workflowsApi: WorkflowsApi;
+  broadcastsPage: BroadcastsPage;
+  newBroadcastForm: NewBroadcastForm;
+  broadcastsApi: BroadcastsApi;
+  channelsApi: ChannelsApi;
+  sidebar: Sidebar;
+  sidebarApi: SidebarApi;
   segmentsApi: SegmentsApi;
   lifecyclesApi: LifecyclesApi;
   appointmentsApi: AppointmentsApi;
@@ -382,6 +396,38 @@ export const test = base.extend<Fixtures>({
 
   customViewsApi: async ({ request, apiHeaders }, use) => {
     await use(new CustomViewsApi(request, apiHeaders));
+  },
+
+  workflowsPage: async ({ page }, use) => {
+    await use(new WorkflowsPage(page));
+  },
+
+  workflowsApi: async ({ request, apiHeaders }, use) => {
+    await use(new WorkflowsApi(request, apiHeaders));
+  },
+
+  broadcastsPage: async ({ page }, use) => {
+    await use(new BroadcastsPage(page));
+  },
+
+  newBroadcastForm: async ({ page }, use) => {
+    await use(new NewBroadcastForm(page));
+  },
+
+  broadcastsApi: async ({ request, apiHeaders }, use) => {
+    await use(new BroadcastsApi(request, apiHeaders));
+  },
+
+  channelsApi: async ({ request, apiHeaders }, use) => {
+    await use(new ChannelsApi(request, apiHeaders));
+  },
+
+  sidebar: async ({ page }, use) => {
+    await use(new Sidebar(page));
+  },
+
+  sidebarApi: async ({ request, apiHeaders }, use) => {
+    await use(new SidebarApi(request, apiHeaders));
   },
 
   workspaceId: async ({ apiHeaders }, use) => {

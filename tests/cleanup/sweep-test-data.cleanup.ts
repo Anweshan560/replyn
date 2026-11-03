@@ -59,6 +59,7 @@ test.describe('Clean up old test data', () => {
     segmentsApi,
     lifecyclesApi,
     contactsApi,
+    workflowsApi,
   }) => {
     await test.step(`the session is in the test workspace "${env.testWorkspace}"`, async () => {
       expect((await workspaceApi.current()).name, 'never sweep any other workspace').toBe(env.testWorkspace);
@@ -84,6 +85,8 @@ test.describe('Clean up old test data', () => {
       { label: 'roles', api: rolesApi, nameFields: ['name'] },
       { label: 'segments', api: segmentsApi, nameFields: ['name'] },
       { label: 'lifecycle stages', api: lifecyclesApi, nameFields: ['name'] },
+      // "Deleting" a workflow archives it; tests reuse archived test workflows, so they don't pile up.
+      { label: 'workflows', api: workflowsApi, nameFields: ['name'] },
     ] as unknown as Sweepable[];
 
     const summary: string[] = [];

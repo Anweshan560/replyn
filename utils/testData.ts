@@ -769,3 +769,19 @@ export function buildWorkspaceInvitee(): { firstName: string; lastName: string; 
     email: `qa-${uniqueSuffix()}-${faker.string.alpha(5).toLowerCase()}@example.com`,
   };
 }
+
+export type WorkflowData = { name: string; description: string };
+
+/** A workflow name and description (the steps are set in api/WorkflowsApi.ts: toWorkflowPayload). */
+export function buildWorkflow(): WorkflowData {
+  const purpose = faker.helpers.arrayElement([
+    'Welcome',
+    'Lead follow-up',
+    'Review request',
+    'No-show nudge',
+  ]);
+  return {
+    name: `${purpose} workflow ${uniqueSuffix()}`,
+    description: `Test workflow: ${faker.lorem.sentence({ min: 4, max: 8 })}`,
+  };
+}

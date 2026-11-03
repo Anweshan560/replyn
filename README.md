@@ -54,6 +54,9 @@ of the same names on CI). Without it those tests are skipped.
 | Workspace General, Hours, SLAs, Assignment, AI (exclusive) | `npm run test:workspace`                                          |
 | Settings → Lifecycle stages (exclusive)                    | `npm run test:lifecycle`                                          |
 | Contacts                                                   | `npm run test:contacts`                                           |
+| Broadcasts: list, filters, form validation (never sends)   | `npm run test:broadcasts`                                         |
+| Workflows list: tabs, Live switch, duplicate, archive      | `npm run test:workflows`                                          |
+| Sidebar widgets: notifications, AI credits, account menu   | `npm run test:sidebar`                                            |
 | Permissions: what the Agent role may and may not do        | `npm run test:permissions`                                        |
 | Clean up old test data / only list what it would delete    | `npm run test:sweep` / `npm run test:sweep:dry`                   |
 | One file                                                   | `npx playwright test tests/clinic/doctors/doctors.spec.ts`        |
@@ -104,6 +107,9 @@ marker and is not swept.
 | `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                  |
 | `tests/inbox/<feature>/`  | Inbox → saved Views: UI and API tests side by side.                                                       |
 | `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive). |
+| `tests/broadcasts/`       | Broadcasts: list, search, status filter, New broadcast form up to validation. Never creates or sends one. |
+| `tests/workflows/`        | Workflows list: tiles, tabs, trigger filter, Live switch, duplicate, archive/restore (canvas is manual).  |
+| `tests/sidebar/`          | Sidebar widgets: notification bell and panel, AI credits, account menu, search, links. Read only.         |
 | `tests/setup/`            | Logs in once before the other tests and saves the session.                                                |
 | `pages/`                  | Page objects (`auth/`, `clinic/`, `settings/`, `contacts/`, `inbox/`): _how_ to use each page.            |
 | `api/`                    | API clients: one small class per endpoint group, plus the field-name mapping to the UI forms.             |

@@ -31,6 +31,14 @@ export const ENDPOINTS = {
   webhookEventTypes: '/v1/webhooks/event-types',
   /** Inbox saved views. */
   customViews: '/v1/custom-views',
+  /** DELETE archives a workflow; `/<id>/activate`, `/deactivate`, `/restore`, `/analytics`. */
+  workflows: '/v1/workflows',
+  broadcasts: '/v1/broadcasts',
+  channels: '/v1/channels',
+  notificationsFeed: '/v1/notifications/feed',
+  credits: '/v1/credits',
+  availability: '/v1/availability/workspace',
+  me: '/v1/users/me',
   /** Teams belong to a workspace. */
   teams: (workspaceId: string) => `/v1/workspaces/${workspaceId}/teams`,
 } as const;
