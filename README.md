@@ -24,6 +24,10 @@ Everything else in `.env.example` is optional and defaults to the beta environme
 (default `Testing`) is the workspace every test runs in: setup switches to it after logging in.
 `.env` is git-ignored, so never commit it. On CI the GitHub secrets `SECRETU` and `SECRETP` provide the account.
 
+The permission tests also need a second, limited account: a member of `TEST_WORKSPACE` with the built-in
+**Agent** role. Add it as `TEST_AGENT_USERNAME` / `TEST_AGENT_PASSWORD` (`.env` locally, GitHub secrets
+of the same names on CI). Without it those tests are skipped.
+
 **3. Run:**
 
 | What                                                       | Command                                                           |
@@ -50,6 +54,8 @@ Everything else in `.env.example` is optional and defaults to the beta environme
 | Workspace General, Hours, SLAs, Assignment, AI (exclusive) | `npm run test:workspace`                                          |
 | Settings → Lifecycle stages (exclusive)                    | `npm run test:lifecycle`                                          |
 | Contacts                                                   | `npm run test:contacts`                                           |
+| Permissions: what the Agent role may and may not do        | `npm run test:permissions`                                        |
+| Clean up old test data / only list what it would delete    | `npm run test:sweep` / `npm run test:sweep:dry`                   |
 | One file                                                   | `npx playwright test tests/clinic/doctors/doctors.spec.ts`        |
 | One test, by name                                          | `npx playwright test -g "when user deletes it"`                   |
 | Headless (no browser window)                               | `npm run test:headless`                                           |
@@ -76,6 +82,17 @@ changing it at once would overwrite each other. Its tests have their own `worksp
 wrap-up back as it found it.
 
 Every run starts with `tests/setup/auth.setup.ts`, which logs in once and saves the session for the other tests.
+The permission tests (`tests/permissions`) start from `tests/setup/agent.setup.ts` instead, logged in as the
+Agent. Writes the Agent may not make are sent with an empty body: the API checks the permission first, so
+they answer 403 and nothing is created.
+
+**Test data and the clean-up job:** every name the tests create carries a marker, `qa` and six digits
+(e.g. `Botox qa482913`), made by `uniqueSuffix()` in `utils/testData.ts`. Tests delete their own data, but a
+crashed or stopped run leaves some behind. `npm run test:sweep` (`tests/cleanup`) deletes it: only records
+with the marker, only those older than 2 hours (so a run in progress keeps its data), and only in
+`TEST_WORKSPACE` (it stops if the session is in any other workspace). CI runs it before every regression.
+`npm run test:sweep:dry` lists what it would delete. Data from before the marker (before 2026-11-03) has no
+marker and is not swept.
 
 ## Folder structure
 
@@ -149,6 +166,8 @@ Add the page object and the client to the `Fixtures` type and to `test.extend`, 
 
 Add a `build…()` function that returns realistic data with a unique part, e.g.
 `` name: `Dr. ${faker.person.lastName()} ${uniqueSuffix()}` ``, so parallel tests never collide.
+Always use `uniqueSuffix()` in the name: its `qa` marker is how the clean-up job recognises test data. If the
+feature is a new list, add it to `tests/cleanup/sweep-test-data.cleanup.ts` too.
 
 ### 6. Write the tests
 
@@ -196,6 +215,7 @@ without a login token (401). `doctors.api.spec.ts` has all of them.
 | The test changes something the whole workspace shares (hours, SLAs, AI…) | Put it under one of the folders in `EXCLUSIVE_TESTS` in `playwright.config.ts` and call `runOnlyOnItsOwn()`; save the current value first and restore it with `cleanup.add()`. |
 | A setting the workspace has only one of (like Wrap-Up)                   | Add the folder to `WORKSPACE_SETTINGS_TESTS`: those run one at a time next to the others.                                                                                      |
 | The test finds a real bug in the app                                     | Add the bug to `scripts/known-bugs.json`, call `knownBug('<key>')` first thing in the test, and create its issue: `npm run known-bugs -- --create`. See "Known bugs".          |
+| The test checks what a limited role may do                               | Put it in `tests/permissions`: it runs logged in as the Agent account.                                                                                                         |
 | The test fails now and then for reasons outside the app                  | Fix it. While you do, tag it `@quarantine`. See "Flaky tests".                                                                                                                 |
 
 ### 8. Run it

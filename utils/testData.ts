@@ -105,11 +105,15 @@ const RECOVERY = [
 ];
 
 /**
- * Six-digit number so every record is unique. Two runs can pick the same
- * fake name, and the tests rely on names to find (and delete) their own rows.
+ * Marks every record the tests create: `qa` and six digits (e.g. "Botox qa482913"). The number
+ * keeps names unique (two runs can pick the same fake name, and tests find and delete their own
+ * rows by name); the `qa` lets the clean-up job (tests/cleanup) tell test data from real data.
+ * Lower case, because some fields (e.g. contact field keys) only allow lower case.
  */
+export const TEST_DATA_MARKER = /qa\d{6}/i;
+
 function uniqueSuffix(): string {
-  return faker.string.numeric({ length: 6, allowLeadingZeros: false });
+  return `qa${faker.string.numeric({ length: 6, allowLeadingZeros: false })}`;
 }
 
 /** Any one of `items`, picked at random. */

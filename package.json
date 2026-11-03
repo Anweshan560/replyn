@@ -39,7 +39,10 @@
     "test:workspace": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/settings/workspace tests/settings/hours tests/settings/sla tests/settings/assignment tests/settings/ai",
     "test:lifecycle": "cross-env EXCLUSIVE_TESTS=true playwright test --project=exclusive tests/settings/lifecycle",
     "test:contacts": "playwright test tests/contacts",
-    "test:all": "node scripts/test-all.mjs"
+    "test:all": "node scripts/test-all.mjs",
+    "test:permissions": "playwright test --project=permissions",
+    "test:sweep": "cross-env SWEEP_TEST_DATA=true playwright test --project=cleanup",
+    "test:sweep:dry": "cross-env SWEEP_TEST_DATA=true SWEEP_DRY_RUN=true playwright test --project=cleanup"
   },
   "keywords": [],
   "author": "",

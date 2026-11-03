@@ -241,6 +241,22 @@
         "tests/settings/outcome-reasons/outcome-reasons.api.spec.ts › should reject an empty reason with 422 naming the label and answers",
         "tests/settings/sla/sla.api.spec.ts › should reject an empty list of clocks with a clear 422"
       ]
+    },
+    {
+      "key": "agent-can-update-workspace",
+      "issue": null,
+      "found": "2026-11-03",
+      "labels": ["bug", "known-bug", "security", "api", "permissions"],
+      "title": "Security: an Agent can update the workspace (PATCH /v1/workspaces/<id> answers 200)",
+      "steps": [
+        "Log in as a workspace member with the built-in Agent role (no workspace settings permission).",
+        "Call PATCH /v1/workspaces/<workspace id> with the Agent's login token."
+      ],
+      "expected": "403 \"Insufficient permissions\", like every other settings endpoint (SLAs, assignment rules, organization, roles) answers an Agent.",
+      "actual": "200 with the workspace record: the endpoint has no permission check, so an Agent can likely rename the workspace or change its hours and AI settings (only an empty body was sent, so nothing was changed).",
+      "tests": [
+        "tests/permissions/agent-access.api.spec.ts › should not let an Agent change the workspace settings"
+      ]
     }
   ]
 }

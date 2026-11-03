@@ -30,10 +30,29 @@ export const env = {
    * `npm run test:exclusive` (and `test:all`, after everything else) sets.
    */
   runExclusiveTests: process.env.EXCLUSIVE_TESTS === 'true',
+  /**
+   * The clean-up job (tests/cleanup) deletes old test data only when this is "true", which
+   * `npm run test:sweep` sets. With SWEEP_DRY_RUN=true it only lists what it would delete.
+   */
+  sweepTestData: process.env.SWEEP_TEST_DATA === 'true',
+  sweepDryRun: process.env.SWEEP_DRY_RUN === 'true',
 } as const;
 
 /** Where tests/setup/auth.setup.ts saves the logged-in browser session. */
 export const AUTH_FILE = 'playwright/.auth/user.json';
+
+/** Where tests/setup/agent.setup.ts saves the Agent account's session, for the permission tests. */
+export const AGENT_AUTH_FILE = 'playwright/.auth/agent.json';
+
+/**
+ * The second, limited test account (role "Agent" in the test workspace), or undefined when
+ * TEST_AGENT_USERNAME / TEST_AGENT_PASSWORD are not set. The permission tests skip without it.
+ */
+export function getAgentCredentials(): Credentials | undefined {
+  const email = process.env.TEST_AGENT_USERNAME;
+  const password = process.env.TEST_AGENT_PASSWORD;
+  return email && password ? { email, password } : undefined;
+}
 
 /** Login details of the test account. */
 export type Credentials = {

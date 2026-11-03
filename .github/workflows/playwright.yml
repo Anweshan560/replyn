@@ -44,6 +44,9 @@ jobs:
     env:
       TEST_USERNAME: ${{ secrets.SECRETU }}
       TEST_PASSWORD: ${{ secrets.SECRETP }}
+      # The limited Agent account for the permission tests; they are skipped while these are unset.
+      TEST_AGENT_USERNAME: ${{ secrets.TEST_AGENT_USERNAME }}
+      TEST_AGENT_PASSWORD: ${{ secrets.TEST_AGENT_PASSWORD }}
       # Set a repository variable TEST_WORKSPACE to change it without editing this file.
       TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
       # Failed tests are written to this Google Sheet (see README, "Failed tests sheet").
@@ -77,6 +80,15 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      # Deletes test data older than 2 hours that earlier runs left behind (only records marked
+      # "qa" + 6 digits, only in the test workspace). Never fails the run. See tests/cleanup.
+      - name: Clean up old test data
+        if: steps.suite.outputs.name != 'quick'
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/cleanup
+        run: npm run test:sweep -- --output=test-results/cleanup
 
       - name: Run tests
         run: |

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { AUTH_FILE, env } from './config/env';
+import { AGENT_AUTH_FILE, AUTH_FILE, env, getAgentCredentials } from './config/env';
 
 const isCI = !!process.env.CI;
 /** No visible browser on CI, or locally with HEADLESS=true (see `npm run test:headless`). */
@@ -28,6 +28,13 @@ const EXCLUSIVE_TESTS =
  * the exclusive tests they don't affect other tests, so they run in every normal run.
  */
 const WORKSPACE_SETTINGS_TESTS = /settings[\\/]wrap-up[\\/].*\.spec\.ts/;
+
+/**
+ * Permission tests run logged in as the limited Agent account (tests/setup/agent.setup.ts), UI and
+ * API alike. Without TEST_AGENT_USERNAME / TEST_AGENT_PASSWORD they are skipped.
+ */
+const PERMISSION_TESTS = /permissions[\\/].*\.spec\.ts/;
+const hasAgentAccount = !!getAgentCredentials();
 
 /**
  * Quarantine: a flaky test tagged @quarantine (with a comment saying why and since when) is left out
@@ -90,7 +97,15 @@ export default defineConfig({
     {
       name: 'setup',
       testDir: './tests/setup',
-      testMatch: /.*\.setup\.ts/,
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // The same for the limited Agent account, used only by the permission tests. A project of its
+    // own, so a failed Agent login never stops the other tests.
+    {
+      name: 'agent-setup',
+      testDir: './tests/setup',
+      testMatch: /agent\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     // Quick check that the app is up: login, and one key page per area (tests tagged @smoke).
@@ -98,7 +113,7 @@ export default defineConfig({
     {
       name: 'smoke',
       ...tagFilter(/@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
+      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -106,7 +121,7 @@ export default defineConfig({
     {
       name: 'ui',
       ...tagFilter(undefined, /@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
+      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -115,7 +130,7 @@ export default defineConfig({
       name: 'api',
       testMatch: API_TESTS,
       ...tagFilter(),
-      testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS],
+      testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
@@ -132,6 +147,31 @@ export default defineConfig({
       dependencies: ['setup'],
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+    },
+    // What the Agent role may and may not do (UI and API), logged in as the Agent.
+    {
+      name: 'permissions',
+      testMatch: PERMISSION_TESTS,
+      ...tagFilter(),
+      dependencies: ['agent-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: hasAgentAccount ? AGENT_AUTH_FILE : undefined,
+      },
+    },
+    // Deletes old test data (only records marked "qa" + 6 digits) when SWEEP_TEST_DATA=true:
+    // `npm run test:sweep`. See tests/cleanup.
+    {
+      name: 'cleanup',
+      testDir: './tests/cleanup',
+      testMatch: /.*\.cleanup\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_FILE,
+        headless: true,
+        launchOptions: { slowMo: 0 },
+      },
     },
     // Exclusive tests (UI and API): on their own, after everything else, one test at a time.
     {

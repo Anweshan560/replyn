@@ -10,3 +10,6 @@ node_modules/
 
 # Google service-account key for the failed-tests sheet
 /secrets/
+
+# Playwright MCP browser snapshots and logs
+/.playwright-mcp/
