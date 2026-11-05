@@ -13,3 +13,4 @@ node_modules/
 
 # Playwright MCP browser snapshots and logs
 /.playwright-mcp/
+/postman/
