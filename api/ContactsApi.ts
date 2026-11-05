@@ -139,7 +139,9 @@ export class ContactsApi extends ResourceApi<ContactPayload, Contact> {
   async eventRecords(id: string): Promise<ContactEvent[]> {
     const response = await this.events(id);
     if (response.status() !== 200) {
-      throw new Error(`GET ${this.path}/${id}/events returned ${response.status()}: ${await response.text()}`);
+      throw new Error(
+        `GET ${this.path}/${id}/events returned ${response.status()}: ${await response.text()}`,
+      );
     }
     return (await response.json()).data.result;
   }

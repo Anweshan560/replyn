@@ -78,7 +78,9 @@ test.describe('Contact actions API', { tag: ['@contacts'] }, () => {
 
       await test.step('responds 200 and the server stored when', async () => {
         expect(out.status()).toBe(200);
-        expect((await (await contactsApi.get(contact.id)).json()).data.optedOutAt).toEqual(expect.any(String));
+        expect((await (await contactsApi.get(contact.id)).json()).data.optedOutAt).toEqual(
+          expect.any(String),
+        );
       });
 
       const back = await test.step('PATCH optedOut: false', () =>

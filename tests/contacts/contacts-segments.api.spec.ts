@@ -24,7 +24,8 @@ test.describe('Segments API', { tag: ['@contacts'] }, () => {
 
       const response = await test.step('POST a new segment', () => segmentsApi.create(payload));
       const body = await response.json();
-      if (body.data?.id) cleanup.add(`segment ${payload.name}`, () => segmentsApi.deleteIfExists(body.data.id));
+      if (body.data?.id)
+        cleanup.add(`segment ${payload.name}`, () => segmentsApi.deleteIfExists(body.data.id));
 
       await test.step('responds 201 with the segment, in this workspace', () => {
         expect(response.status()).toBe(201);
@@ -40,7 +41,10 @@ test.describe('Segments API', { tag: ['@contacts'] }, () => {
       });
     });
 
-    test('should create a segment with only a name, as New segment does', async ({ segmentsApi, cleanup }) => {
+    test('should create a segment with only a name, as New segment does', async ({
+      segmentsApi,
+      cleanup,
+    }) => {
       const name = buildSegmentName();
 
       const response = await test.step('POST a name and no filter', () => segmentsApi.create({ name }));
@@ -157,7 +161,10 @@ test.describe('Segments API', { tag: ['@contacts'] }, () => {
 
     test('should reject a filter that is not an object with 422', async ({ segmentsApi }) => {
       const response = await test.step('POST a text filter', () =>
-        segmentsApi.create({ name: buildSegmentName(), filter: 'nope' as unknown as SegmentPayload['filter'] }));
+        segmentsApi.create({
+          name: buildSegmentName(),
+          filter: 'nope' as unknown as SegmentPayload['filter'],
+        }));
 
       await test.step('responds 422 with an error about the filter', async () => {
         expect(response.status()).toBe(422);
@@ -221,7 +228,9 @@ test.describe('Segments API', { tag: ['@contacts'] }, () => {
       const { authorization: _omitted, ...headersWithoutToken } = await apiHeaders();
 
       await test.step('list without a token responds 401', async () => {
-        const response = await request.get(`${env.apiUrl}${ENDPOINTS.segments}`, { headers: headersWithoutToken });
+        const response = await request.get(`${env.apiUrl}${ENDPOINTS.segments}`, {
+          headers: headersWithoutToken,
+        });
         expect(response.status()).toBe(401);
       });
       await test.step('create without a token responds 401', async () => {
