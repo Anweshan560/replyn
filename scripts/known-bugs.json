@@ -289,6 +289,87 @@
       "tests": [
         "tests/broadcasts/broadcasts.api.spec.ts › should report the same channel count as the channels it returns"
       ]
+    },
+    {
+      "key": "segment-blank-name",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A segment can be saved with a name of only spaces",
+      "steps": ["POST /v1/segments with the name \"   \"."],
+      "expected": "422, like an empty name.",
+      "actual": "201: the segment is saved with a blank name and an empty slug.",
+      "tests": [
+        "tests/contacts/contacts-segments.api.spec.ts › should reject a name of only spaces with 422"
+      ]
+    },
+    {
+      "key": "segment-invalid-rule",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A segment can be saved with a filter rule that does not exist",
+      "steps": ["POST /v1/segments with a rule whose field or operator does not exist, e.g. {\"field\":\"nope\",\"operator\":\"contains\",\"value\":\"x\"}."],
+      "expected": "422 naming the bad rule.",
+      "actual": "201: the rule is stored as sent.",
+      "tests": [
+        "tests/contacts/contacts-segments.api.spec.ts › should reject a rule with an unknown field with 422",
+        "tests/contacts/contacts-segments.api.spec.ts › should reject a rule with an unknown operator with 422"
+      ]
+    },
+    {
+      "key": "segment-malformed-id-500",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "GET /v1/segments/<malformed id> answers 500",
+      "steps": ["GET /v1/segments/not-a-uuid."],
+      "expected": "400 \"Validation failed (uuid is expected)\", as /v1/contacts answers.",
+      "actual": "500 \"Internal server error\".",
+      "tests": [
+        "tests/contacts/contacts-segments.api.spec.ts › should answer 400 for a malformed id"
+      ]
+    },
+    {
+      "key": "contact-bad-stage-500",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Moving a contact to a stage that does not exist answers 500",
+      "steps": ["PATCH /v1/contacts/<id> with a lifecycleId that no stage has, or one that is not a UUID."],
+      "expected": "A 4xx that names the lifecycleId.",
+      "actual": "500 \"Internal server error\".",
+      "tests": [
+        "tests/contacts/contacts-actions.api.spec.ts › should reject a stage id no stage has",
+        "tests/contacts/contacts-actions.api.spec.ts › should reject a stage id that is not a UUID"
+      ]
+    },
+    {
+      "key": "contact-empty-note",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "An empty note can be saved on a contact",
+      "steps": ["POST /v1/contacts/<id>/activity with type \"note\" and empty text, or with no payload."],
+      "expected": "422.",
+      "actual": "201: a blank note is added to the contact's timeline.",
+      "tests": [
+        "tests/contacts/contacts-actions.api.spec.ts › should reject a note with empty text",
+        "tests/contacts/contacts-actions.api.spec.ts › should reject a note without a payload"
+      ]
+    },
+    {
+      "key": "closing-note-unknown-topic",
+      "issue": null,
+      "found": "2026-11-05",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Resolving a conversation accepts a closing note category that does not exist",
+      "steps": ["PATCH /v1/contacts/<id> with status \"closed\" and a closingNote whose topicId no closing note has."],
+      "expected": "A 4xx that names the topicId.",
+      "actual": "200: the conversation closes, and the timeline keeps only the summary: the category is silently dropped.",
+      "tests": [
+        "tests/contacts/contacts-actions.api.spec.ts › should reject a closing note category that does not exist"
+      ]
     }
   ]
 }
