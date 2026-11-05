@@ -42,7 +42,7 @@ jobs:
         run: |
           since="$(date -u +%Y-%m-%d)T00:30:00Z"
           started=$(gh run list --workflow playwright.yml --branch main --limit 30 --json event,createdAt \
-            --jq "[.[] | select(.createdAt >= \"$since\" and (.event == \"workflow_dispatch\" or .event == \"schedule\"))] | length")
+            --jq "[.[] | select(.createdAt >= \"$since\" and .event == \"workflow_dispatch\")] | length")
           echo "Runs started since $since: $started"
           if [ "$started" -eq 0 ]; then
             bash .github/scripts/alert.sh ci-alert-missed 'The daily test run did not start' \

@@ -9,7 +9,13 @@ test.describe('Treatments', { tag: ['@clinic', '@treatments'] }, () => {
   test('should open the Treatments page when user picks Treatments in the Clinic menu', async ({
     page,
     treatmentsPage,
+    treatmentsApi,
+    cleanup,
   }) => {
+    // With no treatments the page shows an empty state instead of the table.
+    const created = await treatmentsApi.createRecord(toTreatmentPayload(buildTreatment()));
+    cleanup.add(`treatment "${created.name}"`, () => treatmentsApi.deleteIfExists(created.id));
+
     await test.step('go to Clinic → Treatments from the dashboard', () => treatmentsPage.openFromDashboard());
     await test.step('the treatments list is shown', async () => {
       await expect(page).toHaveURL('/treatments');

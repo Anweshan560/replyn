@@ -38,10 +38,13 @@ test.describe('Sidebar widgets', { tag: ['@sidebar'] }, () => {
   test('should show the AI credits left and open Settings → Credits', async ({ page, sidebar }) => {
     const balanceLoaded = waitForApiResponse(page, 'GET', `${ENDPOINTS.credits}/balance`);
     await page.goto('/dashboard');
-    const credits = Math.floor(Number((await (await balanceLoaded).json()).data.balance));
+    // The API answers in US dollars; the app shows 1,000 credits per dollar.
+    const dollars = Number((await (await balanceLoaded).json()).data.balance);
+    const credits = Math.floor(dollars * 1000);
+    const shown = credits.toLocaleString('en-US');
 
-    await test.step(`the widget says ${credits} left`, async () => {
-      await expect(sidebar.creditsLink).toHaveAccessibleName(`AI credits, ${credits} left`);
+    await test.step(`the widget says ${shown} left`, async () => {
+      await expect(sidebar.creditsLink).toHaveAccessibleName(`AI credits, ${shown} left`);
     });
     await test.step('it opens /settings/credits with the activity list', async () => {
       await sidebar.creditsLink.click();

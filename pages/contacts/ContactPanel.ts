@@ -111,7 +111,7 @@ export class ContactPanel {
     await expect(this.resolveDialog).toBeHidden();
   }
 
-  /** On the Billing tab: Add advance for `amount` AED with a note, and save. */
+  /** On the Billing tab: Add advance for `amount` with a note, and save. */
   async addAdvance(contactId: string, amount: number, note: string): Promise<void> {
     await this.openTab('Billing');
     await this.root.getByRole('button', { name: 'Add advance' }).click();

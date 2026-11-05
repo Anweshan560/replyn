@@ -2,11 +2,13 @@ name: Playwright Tests
 
 # What runs when:
 #   - push / pull request: quick check (smoke + API tests), a few minutes
-#   - every morning, 6:30 Nepal time: full regression (everything except the exclusive tests)
+#   - every morning, 6:30 Nepal time: full regression (everything except the exclusive tests).
+#     cron-job.org starts it through the API, so it shows as a manual run. GitHub's own timer ran
+#     hours late. Daily Run Watchdog alerts if it does not start.
 #   - every Sunday, 5:30 Nepal time: exclusive tests (they change workspace-wide settings, so they run
 #     when nobody is working)
 #   - by hand (Actions tab > Playwright Tests > Run workflow): pick any of the above
-# Scheduled runs only start from the default branch (main), and GitHub may start them a little late.
+# Scheduled runs only start from the default branch (main), and GitHub may start them late.
 on:
   push:
     branches:
@@ -16,8 +18,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '45 0 * * *' # 06:30 Nepal time (UTC+5:45) every day; cron times are UTC
-    - cron: '45 23 * * 6' # 05:30 Nepal time every Sunday (= 23:45 UTC on Saturday)
+    - cron: '45 23 * * 6' # 05:30 Nepal time every Sunday (= 23:45 UTC on Saturday); cron times are UTC
   workflow_dispatch:
     inputs:
       suite:
@@ -60,7 +61,6 @@ jobs:
         id: suite
         run: |
           case "${{ github.event_name }}/${{ github.event.schedule }}" in
-            "schedule/45 0 * * *") suite=regression ;;
             "schedule/45 23 * * 6") suite=exclusive ;;
             workflow_dispatch/*)  suite="${{ inputs.suite }}" ;;
             *)                    suite=quick ;;

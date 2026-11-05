@@ -3,6 +3,7 @@ import { BROADCAST_STATUSES } from '../../api/BroadcastsApi';
 import { ENDPOINTS } from '../../api/ResourceApi';
 import { env } from '../../config/env';
 import { knownBug } from '../../utils/knownBug';
+import { buildSegmentName } from '../../utils/testData';
 
 // Read only: never create or send a broadcast. The one POST sends an incomplete body that must be
 // refused; if the API ever accepts it, the test fails and says so (nothing can be sent: there is
@@ -59,12 +60,14 @@ test.describe('Broadcasts API', { tag: ['@broadcasts'] }, () => {
   });
 
   test('should report the same channel count as the channels it returns', async ({ channelsApi }) => {
-    knownBug('channels-count-mismatch');
     const response = await test.step('GET /v1/channels (one page of up to 100)', () => channelsApi.list());
     await test.step('meta.count equals the number of channels returned', async () => {
       expect(response.status()).toBe(200);
       const { result, meta } = (await response.json()).data;
       expect(meta.nextPage).toBeNull();
+      // The count includes channels of the organization's other workspaces, so the bug only shows
+      // in an organization that has some.
+      if (meta.count !== result.length) knownBug('channels-count-mismatch');
       expect(meta.count).toBe(result.length);
     });
   });
@@ -72,7 +75,11 @@ test.describe('Broadcasts API', { tag: ['@broadcasts'] }, () => {
   test('should list the segments a broadcast can target, all in this workspace', async ({
     segmentsApi,
     workspaceId,
+    cleanup,
   }) => {
+    const created = await segmentsApi.createRecord({ name: buildSegmentName() });
+    cleanup.add(`segment "${created.name}"`, () => segmentsApi.deleteIfExists(created.id));
+
     const segments = await segmentsApi.listRecords();
     expect(segments.length).toBeGreaterThan(0);
     for (const segment of segments as unknown as { name: string; workspaceId: string }[]) {

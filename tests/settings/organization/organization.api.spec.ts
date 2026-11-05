@@ -20,7 +20,6 @@ test.describe('Organization API', { tag: ['@settings', '@organization'] }, () =>
         expect.objectContaining({
           id: expect.any(String),
           name: expect.any(String),
-          website: expect.any(String),
           phoneNumber: expect.stringMatching(/^\+\d+$/),
           region: expect.stringMatching(/^[A-Z]{2}$/),
           timezone: expect.any(String),
@@ -28,6 +27,8 @@ test.describe('Organization API', { tag: ['@settings', '@organization'] }, () =>
           currency: expect.stringMatching(/^[A-Z]{3}$/),
         }),
       );
+      // Optional: null until someone fills it in.
+      expect(data).toHaveProperty('website');
     });
   });
 

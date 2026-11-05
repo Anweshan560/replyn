@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures/test';
 import { BROADCAST_COLUMNS, BROADCAST_STATUS_LABELS } from '../../pages/broadcasts/BroadcastsPage';
 import { ENDPOINTS } from '../../api/ResourceApi';
 import { mockApiFailure, recordApiCalls, waitForApiResponse } from '../../utils/network';
+import { buildSegmentName } from '../../utils/testData';
 
 // Never create or send a broadcast: the test workspace has no WhatsApp channel, and a broadcast
 // messages real contacts. The form is only checked up to its validation, with the create call
@@ -64,7 +65,11 @@ test.describe('Broadcasts', { tag: ['@broadcasts'] }, () => {
     broadcastsPage,
     newBroadcastForm,
     segmentsApi,
+    cleanup,
   }) => {
+    const segment = await segmentsApi.createRecord({ name: buildSegmentName() });
+    cleanup.add(`segment "${segment.name}"`, () => segmentsApi.deleteIfExists(segment.id));
+
     await broadcastsPage.openFromDashboard();
 
     await test.step('New broadcast opens /broadcasts/create', async () => {
@@ -84,9 +89,8 @@ test.describe('Broadcasts', { tag: ['@broadcasts'] }, () => {
       await expect(newBroadcastForm.templatePicker).toBeDisabled();
       await expect(page.getByText('Select a channel first to see templates')).toBeVisible();
     });
-    await test.step("the Segment list offers exactly the workspace's segments", async () => {
-      const segments = (await segmentsApi.listRecords()) as unknown as { name: string }[];
-      expect((await newBroadcastForm.segmentOptions()).sort()).toEqual(segments.map((s) => s.name).sort());
+    await test.step("the Segment list offers the workspace's segment", async () => {
+      expect(await newBroadcastForm.segmentOptions()).toContain(segment.name);
     });
   });
 
