@@ -324,6 +324,24 @@ the tag. Never quarantine a test because the app has a bug: mark that with `know
 On GitHub Actions, every run's summary page shows a table: passed, failed, flaky, known bugs and
 skipped, then each failed and flaky test with its first error line and source.
 
+### Alerts
+
+Scheduled and hand-started runs on `main` report problems as GitHub issues, and GitHub emails people
+watching the repository. Each kind of alert has one issue: the first alert opens it, and later ones
+comment on it until someone closes it.
+
+| Label             | When                                                                     |
+| ----------------- | ------------------------------------------------------------------------ |
+| `ci-alert-failed` | The run failed or was cancelled.                                         |
+| `ci-alert-flaky`  | The run passed, but tests needed a retry. The comments show how often.   |
+| `ci-alert-missed` | No run started by 09:00 Nepal time, e.g. the cron-job.org token expired. |
+
+The repository is public, so alerts hold only a link and a count. To check that alerts reach you, open
+**Actions > Daily Run Watchdog > Run workflow** and tick `test_alert`.
+
+The watchdog uses GitHub's own timer, which can start late. GitHub also turns scheduled workflows off
+after 60 days without activity in the repository.
+
 ### Known bugs
 
 When a test finds a real bug in the app, the test stays as it is (it checks the correct behaviour)

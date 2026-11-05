@@ -1,0 +1,50 @@
+name: Daily Run Watchdog
+
+# The daily regression is started at 06:30 Nepal time by cron-job.org. If that stops, for example
+# because its GitHub token expired, no run fails, so nothing else would notice. This checks that a
+# run started and opens an alert if none did. Start it by hand from the Actions tab with
+# "test_alert" ticked to prove that alerts reach you.
+on:
+  schedule:
+    - cron: '15 3 * * *' # 09:00 Nepal time (UTC+5:45); GitHub may start it late, which is fine here
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test alert instead of checking
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check today's run started
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send a test alert
+        if: inputs.test_alert
+        run: |
+          bash .github/scripts/alert.sh ci-alert-test 'Test alert from the watchdog' \
+            "This is a test, and alerts work. Close this issue."
+
+      - name: Look for today's run
+        if: ${{ !inputs.test_alert }}
+        run: |
+          since="$(date -u +%Y-%m-%d)T00:30:00Z"
+          started=$(gh run list --workflow playwright.yml --branch main --limit 30 --json event,createdAt \
+            --jq "[.[] | select(.createdAt >= \"$since\" and (.event == \"workflow_dispatch\" or .event == \"schedule\"))] | length")
+          echo "Runs started since $since: $started"
+          if [ "$started" -eq 0 ]; then
+            bash .github/scripts/alert.sh ci-alert-missed 'The daily test run did not start' \
+              "No test run started on main since $since. Check the job on cron-job.org and its GitHub token, then start a run from the Actions tab."
+          fi
