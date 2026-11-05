@@ -26,6 +26,8 @@ export default class GithubSummaryReporter implements Reporter {
     const failed = unexpected.filter((test) => !isFixedKnownBug(test));
     const flaky = tests.filter((test) => test.outcome() === 'flaky');
     const skipped = tests.filter((test) => test.outcome() === 'skipped');
+    // Read by the workflow's alert job: a green run can still hide tests that needed a retry.
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `flaky=${flaky.length}\n`);
     const expected = tests.filter((test) => test.outcome() === 'expected');
     // Known bugs: marked test.fail() and failing as expected.
     const knownBugs = expected.filter((test) => test.expectedStatus === 'failed');

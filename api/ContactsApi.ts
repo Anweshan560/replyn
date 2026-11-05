@@ -28,6 +28,28 @@ export type ContactPayload = {
   tags?: string[];
   treatmentIds?: string[];
   blocked?: boolean;
+  /** Opt the contact out of broadcasts, or back in. The API answers with `optedOutAt`. */
+  optedOut?: boolean;
+  /** "closed" resolves the conversation, "open" reopens it. */
+  status?: 'open' | 'closed';
+  /** Sent with status "closed", as the Resolve dialog does. */
+  closingNote?: ContactClosingNote;
+};
+
+/** What the Resolve dialog sends: the closing note category and a summary. */
+export type ContactClosingNote = { topicId: string; topicName: string; summary: string };
+
+/** Request body for POST /v1/contacts/<id>/activity, e.g. a note from the side panel. */
+export type ContactActivityPayload = {
+  type?: string;
+  payload?: { text: string };
+  mentioned?: string[];
+};
+
+/** One entry of a contact's timeline. */
+export type ContactEvent = {
+  contactId: string;
+  activity?: { type: string; payload: Record<string, unknown> | null };
 };
 
 /** A contact as the API returns it (only the fields the tests use). */
@@ -113,6 +135,23 @@ export class ContactsApi extends ResourceApi<ContactPayload, Contact> {
     return sendTimed(() => this.request.get(this.url(`${id}/events`), { headers }));
   }
 
+  /** The timeline for test checks, newest first. Throws unless the API answers 200. */
+  async eventRecords(id: string): Promise<ContactEvent[]> {
+    const response = await this.events(id);
+    if (response.status() !== 200) {
+      throw new Error(
+        `GET ${this.path}/${id}/events returned ${response.status()}: ${await response.text()}`,
+      );
+    }
+    return (await response.json()).data.result;
+  }
+
+  /** POST to the contact's timeline: how the side panel saves a note. */
+  async addActivity(id: string, body: ContactActivityPayload): Promise<APIResponse> {
+    const headers = await this.headers();
+    return sendTimed(() => this.request.post(this.url(`${id}/activity`), { headers, data: body }));
+  }
+
   /** GET where the contact came from (origin, who added them, referral details). */
   async origin(id: string): Promise<APIResponse> {
     const headers = await this.headers();
@@ -132,9 +171,10 @@ export function firstNameContains(text: string): FilterRule {
   return { field: 'firstName', operator: 'contains', valueSource: 'value', value: text };
 }
 
+/** Segments update with PUT; PATCH answers 404. */
 export class SegmentsApi extends ResourceApi<SegmentPayload, Segment> {
   constructor(request: APIRequestContext, headers: HeadersProvider) {
-    super(request, headers, ENDPOINTS.segments);
+    super(request, headers, ENDPOINTS.segments, 'PUT');
   }
 }
 

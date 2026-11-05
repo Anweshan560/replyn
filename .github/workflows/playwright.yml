@@ -41,6 +41,8 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      flaky: ${{ steps.run_tests.outputs.flaky }}
     env:
       TEST_USERNAME: ${{ secrets.SECRETU }}
       TEST_PASSWORD: ${{ secrets.SECRETP }}
@@ -91,6 +93,7 @@ jobs:
         run: npm run test:sweep -- --output=test-results/cleanup
 
       - name: Run tests
+        id: run_tests
         run: |
           case "${{ steps.suite.outputs.name }}" in
             quick)      npx playwright test --project=smoke --project=api ;;
@@ -126,3 +129,37 @@ jobs:
           path: test-results/
           retention-days: 14
           if-no-files-found: warn
+
+  # Tell someone when a scheduled or hand-started run on main fails, or passes only after retries.
+  # Pushes and pull requests are left out: whoever made them is watching. See README, "Alerts".
+  alert:
+    name: Alert
+    needs: tests
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      (needs.tests.result != 'success' || (needs.tests.outputs.flaky != '' && needs.tests.outputs.flaky != '0'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Alert about a failed run
+        if: needs.tests.result != 'success'
+        run: |
+          bash .github/scripts/alert.sh ci-alert-failed 'The test run failed' \
+            "The run ended with \"${{ needs.tests.result }}\": $RUN_URL"
+
+      - name: Record flaky tests
+        if: needs.tests.result == 'success'
+        run: |
+          bash .github/scripts/alert.sh ci-alert-flaky 'Flaky tests in the daily run' \
+            "${{ needs.tests.outputs.flaky }} flaky test(s), which failed and then passed on retry: $RUN_URL"
