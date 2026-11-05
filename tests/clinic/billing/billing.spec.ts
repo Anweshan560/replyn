@@ -4,9 +4,9 @@ import { BILLING_TABS, type BillingTab } from '../../../pages/clinic/BillingPage
 import { buildPatient, buildPaymentAmount, nextClinicDay } from '../../../utils/testData';
 import { bookThroughApi, createDoctorAndTreatment } from '../bookingSetup';
 
-/** "AED 1,022.00", as Billing shows money. */
-function aed(amount: number): string {
-  return `AED ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** "AED 1,022.00", as Billing shows money in the organization's currency. */
+function money(currency: string, amount: number): string {
+  return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Billing totals cover the whole workspace and other tests add to them, so these tests check
@@ -73,7 +73,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     doctorsApi,
     treatmentsApi,
     cleanup,
+    organizationApi,
   }) => {
+    const { currency } = await organizationApi.current();
     const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
     const patient = buildPatient();
     const day = nextClinicDay();
@@ -84,7 +86,7 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
       return booked;
     });
 
-    await test.step(`open the visit and record a payment of ${aed(amount)}, all done`, async () => {
+    await test.step(`open the visit and record a payment of ${money(currency, amount)}, all done`, async () => {
       await appointmentsPage.open(day);
       await appointmentsPage.openAppointment(setup.treatment.name);
       await appointmentsPage.panel.recordPayment(appointment.id, amount);
@@ -112,8 +114,8 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     const [invoice, receipt] = [billing.invoices[0], billing.receipts[0]];
     await test.step('the visit panel shows both, and the outcome "All done"', async () => {
       const panel = appointmentsPage.panel;
-      await expect(panel.document(invoice.code)).toContainText(aed(amount));
-      await expect(panel.document(receipt.code)).toContainText(aed(amount));
+      await expect(panel.document(invoice.code)).toContainText(money(currency, amount));
+      await expect(panel.document(receipt.code)).toContainText(money(currency, amount));
       await expect(panel.root).toContainText('All done');
       await expect(panel.recordPaymentButton).toBeHidden();
     });
@@ -123,7 +125,7 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
       await expect(rows).toHaveCount(2);
       await expect(rows.filter({ hasText: invoice.code })).toContainText('Invoice');
       await expect(rows.filter({ hasText: receipt.code })).toContainText('Receipt');
-      for (const row of await rows.all()) await expect(row).toContainText(aed(amount));
+      for (const row of await rows.all()) await expect(row).toContainText(money(currency, amount));
     });
     await test.step('Needs review no longer lists the patient', async () => {
       await billingPage.openTab('Needs review');
@@ -137,7 +139,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     billingApi,
     contactsApi,
     cleanup,
+    organizationApi,
   }) => {
+    const { currency } = await organizationApi.current();
     const patient = buildPatient();
     const name = fullName(patient);
     const amount = buildPaymentAmount();
@@ -164,15 +168,15 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
       return billing.advances[0];
     });
     await test.step('the Billing tab shows the advance and the money on account', async () => {
-      await expect(panel.billingDocument(advance.code)).toContainText(aed(amount));
-      await expect(panel.root).toContainText(`${aed(amount)} on account`);
+      await expect(panel.billingDocument(advance.code)).toContainText(money(currency, amount));
+      await expect(panel.root).toContainText(`${money(currency, amount)} on account`);
     });
     await test.step('Billing → Credit on account lists the patient with that credit', async () => {
       await billingPage.open('Credit on account');
       await billingPage.searchBox.fill(name);
       const row = billingPage.rowsFor(name);
       await expect(row).toHaveCount(1);
-      await expect(row).toContainText(aed(amount));
+      await expect(row).toContainText(money(currency, amount));
     });
     await test.step('Billing → Documents lists the advance with its note', async () => {
       await billingPage.openTab('Documents');

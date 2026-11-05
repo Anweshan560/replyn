@@ -43,7 +43,7 @@ test.describe('Report and dashboard numbers', { tag: ['@reports', '@report-numbe
     await test.step('open the dashboard', () => dashboardPage.open());
     const before = await test.step('read New advances', () => dashboardPage.amount('New advances'));
 
-    await test.step(`record an advance of AED ${amount} (through the API)`, async () => {
+    await test.step(`record an advance of ${amount} (through the API)`, async () => {
       const patient = await contactsApi.createRecord(buildPatient());
       cleanup.add(`patient ${patient.id}`, () => contactsApi.deleteIfExists(patient.id));
       expect(
@@ -51,7 +51,7 @@ test.describe('Report and dashboard numbers', { tag: ['@reports', '@report-numbe
       ).toBe(201);
     });
 
-    await test.step(`after a reload, New advances is AED ${amount} higher`, async () => {
+    await test.step(`after a reload, New advances is ${amount} higher`, async () => {
       await expect
         .poll(async () => {
           await dashboardPage.open();

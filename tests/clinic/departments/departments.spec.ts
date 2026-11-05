@@ -9,7 +9,13 @@ test.describe('Departments', { tag: ['@clinic', '@departments'] }, () => {
   test('should open the Departments page when user picks Departments in the Clinic menu', async ({
     page,
     departmentsPage,
+    departmentsApi,
+    cleanup,
   }) => {
+    // With no departments the page shows an empty state instead of the table.
+    const created = await departmentsApi.createRecord(toDepartmentPayload(buildDepartment()));
+    cleanup.add(`department "${created.name}"`, () => departmentsApi.deleteIfExists(created.id));
+
     await test.step('go to Clinic → Departments from the dashboard', () =>
       departmentsPage.openFromDashboard());
     await test.step('the departments list is shown', async () => {

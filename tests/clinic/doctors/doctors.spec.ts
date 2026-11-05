@@ -9,7 +9,11 @@ test.describe('Doctors', { tag: ['@clinic', '@doctors'] }, () => {
   test(
     'should open the Doctors page when user picks Doctors in the Clinic menu',
     { tag: '@smoke' },
-    async ({ page, doctorsPage }) => {
+    async ({ page, doctorsPage, doctorsApi, cleanup }) => {
+      // With no doctors the page shows an empty state instead of the table.
+      const created = await doctorsApi.createRecord(toDoctorPayload(buildDoctor()));
+      cleanup.add(`doctor "${created.name}"`, () => doctorsApi.deleteIfExists(created.id));
+
       await test.step('go to Clinic → Doctors from the dashboard', () => doctorsPage.openFromDashboard());
       await test.step('the doctors list is shown', async () => {
         await expect(page).toHaveURL('/doctors');
