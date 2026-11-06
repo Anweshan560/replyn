@@ -11,7 +11,6 @@ export class AiSettingsPage {
   readonly navigation: SettingsNavigation;
   /** Named after what it does next: "Turn AI on" while off, "Turn AI off" while on. */
   readonly masterSwitch: Locator;
-  readonly echoRepliesSwitch: Locator;
   readonly lockedHint: Locator;
 
   constructor(
@@ -21,7 +20,6 @@ export class AiSettingsPage {
     this.navigation = new SettingsNavigation(page);
     const main = page.getByRole('main');
     this.masterSwitch = main.getByRole('switch', { name: /^Turn AI (on|off)$/ });
-    this.echoRepliesSwitch = main.getByRole('switch', { name: 'Turn on Echo replies' });
     this.lockedHint = main.getByText("Turn on AI first. Nothing below runs while it's off.");
   }
 
