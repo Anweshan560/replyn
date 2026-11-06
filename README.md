@@ -324,6 +324,23 @@ the tag. Never quarantine a test because the app has a bug: mark that with `know
 On GitHub Actions, every run's summary page shows a table: passed, failed, flaky, known bugs and
 skipped, then each failed and flaky test with its first error line and source.
 
+### After a deploy
+
+The daily run only tests once a day, so a bad deploy could stay broken until the next morning. Add
+this as the last step of the deploy to beta, to run the quick check (smoke and API tests) straight away:
+
+```sh
+curl -X POST \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "Content-Type: application/json" \
+  -d '{"ref":"main","inputs":{"suite":"quick"}}' \
+  https://api.github.com/repos/Anweshan560/replyn/actions/workflows/playwright.yml/dispatches
+```
+
+`GITHUB_TOKEN` is a fine-grained token for this repository with Actions read and write access, kept
+as a secret in the deploy pipeline. It answers 204 when the run has started. Failures alert as below.
+
 ### Alerts
 
 Scheduled and hand-started runs on `main` report problems as GitHub issues, and GitHub emails people
