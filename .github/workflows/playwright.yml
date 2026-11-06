@@ -1,7 +1,11 @@
 name: Playwright Tests
+# Names hand-started runs after their suite, so the watchdog can tell the daily regression from the
+# quick check a deploy starts. Other runs keep GitHub's usual name.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Playwright Tests ({0})', inputs.suite) || '' }}
 
 # What runs when:
-#   - push / pull request: quick check (smoke + API tests), a few minutes
+#   - push / pull request: code checks (types, formatting) and the quick check (smoke + API tests)
+#   - after a deploy: the quick check, started by the deploy. See README, "After a deploy".
 #   - every morning, 6:30 Nepal time: full regression (everything except the exclusive tests).
 #     cron-job.org starts it through the API, so it shows as a manual run. GitHub's own timer ran
 #     hours late. Daily Run Watchdog alerts if it does not start.
@@ -38,6 +42,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checks:
+    name: Code checks
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Check formatting
+        run: npm run format:check
+
   tests:
     name: Tests
     runs-on: ubuntu-latest

@@ -32,6 +32,17 @@ export type WorkflowRecord = Required<Omit<WorkflowPayload, 'description'>> & {
   createdAt: string;
 };
 
+/** One run of a workflow. A run that reaches an Exit step ends as "exited". */
+export type WorkflowExecution = {
+  id: string;
+  workflowId: string;
+  workflowName: string;
+  status: string;
+  currentStepId: string | null;
+  totalSteps: number;
+  completedSteps: number;
+};
+
 /** The list's filters, as the Workflows page sends them. */
 export type WorkflowFilters = {
   search?: string;
@@ -134,6 +145,32 @@ export class WorkflowsApi extends ResourceApi<WorkflowPayload, WorkflowRecord> {
     return this.post(`${id}/restore`);
   }
 
+  /** Run a workflow for a contact. Refused with 400 unless the workflow is active. */
+  async trigger(id: string, contactId?: string): Promise<APIResponse> {
+    const headers = await this.headers();
+    return sendTimed(() =>
+      this.request.post(`${this.url()}/${id}/trigger`, { headers, data: { contactId } }),
+    );
+  }
+
+  /** Run a workflow for several contacts: answers which were triggered, skipped or failed. */
+  async triggerBulk(id: string, contactIds: string[]): Promise<APIResponse> {
+    const headers = await this.headers();
+    return sendTimed(() =>
+      this.request.post(`${this.url()}/${id}/trigger/bulk`, { headers, data: { contactIds } }),
+    );
+  }
+
+  /** Every run for a contact, newest first: History > Automations in the contact's panel. */
+  async contactExecutions(contactId: string): Promise<WorkflowExecution[]> {
+    return this.result(`contacts/${contactId}/executions`);
+  }
+
+  /** Every run of a workflow, newest first: the workflow's activities page. */
+  async activities(id: string): Promise<(WorkflowExecution & { contactId: string })[]> {
+    return this.result(`${id}/activities`);
+  }
+
   /** The numbers at the top of the Workflows page. */
   async analytics(): Promise<APIResponse> {
     return this.getPath('analytics');
@@ -163,6 +200,12 @@ export class WorkflowsApi extends ResourceApi<WorkflowPayload, WorkflowRecord> {
       await this.delete(old.id);
     }
     return super.createRecord(payload);
+  }
+
+  private async result<T>(path: string): Promise<T[]> {
+    const response = await this.getPath(path);
+    if (!response.ok()) throw new Error(`GET ${this.path}/${path} returned ${response.status()}`);
+    return (await response.json()).data.result;
   }
 
   private async post(path: string): Promise<APIResponse> {

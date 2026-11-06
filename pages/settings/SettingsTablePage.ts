@@ -153,12 +153,15 @@ export abstract class SettingsTablePage<TData> {
     // opens that row's edit dialog). A click hits this button or waits, e.g. while a toast covers
     // it. The menu can still miss a click during a re-render, so click again until this row's
     // button reports its menu open (checked first, as a second click would close it).
-    await expect(async () => {
-      if ((await menuButton.getAttribute('aria-expanded')) !== 'true') {
-        await menuButton.click({ timeout: 5_000 });
-      }
-      await expect(menuButton).toHaveAttribute('aria-expanded', 'true', { timeout: 3_000 });
-    }, `the row menu of ${this.rowKey(data)} should open`).toPass({ timeout: 30_000 });
+    await expect(
+      async () => {
+        if ((await menuButton.getAttribute('aria-expanded')) !== 'true') {
+          await menuButton.click({ timeout: 5_000 });
+        }
+        await expect(menuButton).toHaveAttribute('aria-expanded', 'true', { timeout: 3_000 });
+      },
+      `the row menu of ${this.rowKey(data)} should open`,
+    ).toPass({ timeout: 30_000 });
     await menuItem.click();
   }
 

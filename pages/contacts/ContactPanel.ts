@@ -45,6 +45,11 @@ export class ContactPanel {
       .getByRole('tab', { name, exact: true });
   }
 
+  /** The History tab's filter: Activity, Follow-ups or Automations (workflow runs). */
+  async filterHistory(name: 'Activity' | 'Follow-ups' | 'Automations'): Promise<void> {
+    await this.root.getByRole('radiogroup', { name: 'Filter history' }).getByRole('radio', { name }).click();
+  }
+
   async openTab(name: ContactTab): Promise<void> {
     await this.tab(name).click();
     await expect(this.tab(name)).toHaveAttribute('aria-selected', 'true');
