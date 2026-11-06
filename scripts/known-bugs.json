@@ -370,6 +370,67 @@
       "tests": [
         "tests/contacts/contacts-actions.api.spec.ts › should reject a closing note category that does not exist"
       ]
+    },
+    {
+      "key": "ticket-blank-name",
+      "issue": null,
+      "found": "2026-11-06",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A ticket can be saved with a name of only spaces",
+      "steps": ["POST /v1/tickets with the name \"   \" and status \"pending\"."],
+      "expected": "422, like an empty name.",
+      "actual": "201: the ticket is saved with a blank name.",
+      "tests": ["tests/tickets/tickets.api.spec.ts › should reject a name of only spaces with 422"]
+    },
+    {
+      "key": "ticket-long-name",
+      "issue": null,
+      "found": "2026-11-06",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "The API accepts ticket names over 200 characters",
+      "steps": ["POST /v1/tickets with a name of 201 characters or more."],
+      "expected": "422: the app's own form stops at 200 (\"Name is too long\").",
+      "actual": "201: the ticket is saved.",
+      "tests": ["tests/tickets/tickets.api.spec.ts › should reject a name over 200 characters with 422"]
+    },
+    {
+      "key": "ticket-unknown-reference-500",
+      "issue": null,
+      "found": "2026-11-06",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Creating a ticket with an assignee or contact that does not exist answers 500",
+      "steps": ["POST /v1/tickets with an assignedTo or contactId that is a valid UUID but no record has."],
+      "expected": "A 4xx that names the field.",
+      "actual": "500 \"Internal server error\".",
+      "tests": [
+        "tests/tickets/tickets.api.spec.ts › should reject an assignee that does not exist with a 4xx",
+        "tests/tickets/tickets.api.spec.ts › should reject a contact that does not exist with a 4xx"
+      ]
+    },
+    {
+      "key": "ticket-malformed-id-500",
+      "issue": null,
+      "found": "2026-11-06",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "A malformed ticket id answers 500",
+      "steps": ["GET /v1/tickets/not-a-uuid."],
+      "expected": "400 \"Validation failed (uuid is expected)\", as /v1/contacts answers.",
+      "actual": "500 \"Internal server error\".",
+      "tests": ["tests/tickets/tickets.api.spec.ts › should answer 400 for a malformed id"]
+    },
+    {
+      "key": "ticket-tags-500",
+      "issue": null,
+      "found": "2026-11-06",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Adding an unknown tag or an empty tag list to a ticket answers 500",
+      "steps": ["POST /v1/tickets/<id>/tags with a tagIds entry no tag has, or with tagIds []."],
+      "expected": "A 4xx that names tagIds.",
+      "actual": "500 \"Internal server error\".",
+      "tests": [
+        "tests/tickets/tickets.api.spec.ts › should reject a tag that does not exist with a 4xx",
+        "tests/tickets/tickets.api.spec.ts › should reject an empty list of tags with 422"
+      ]
     }
   ]
 }

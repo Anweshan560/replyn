@@ -57,6 +57,7 @@ test.describe('Clean up old test data', () => {
     customViewsApi,
     rolesApi,
     segmentsApi,
+    ticketsApi,
     lifecyclesApi,
     contactsApi,
     workflowsApi,
@@ -84,6 +85,7 @@ test.describe('Clean up old test data', () => {
       // Built-in roles never carry the marker, so they are never deleted.
       { label: 'roles', api: rolesApi, nameFields: ['name'] },
       { label: 'segments', api: segmentsApi, nameFields: ['name'] },
+      { label: 'tickets', api: ticketsApi, nameFields: ['name'] },
       { label: 'lifecycle stages', api: lifecyclesApi, nameFields: ['name'] },
       // "Deleting" a workflow archives it; tests reuse archived test workflows, so they don't pile up.
       { label: 'workflows', api: workflowsApi, nameFields: ['name'] },

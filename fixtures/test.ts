@@ -1,4 +1,6 @@
 import { test as base } from '@playwright/test';
+import { TicketsApi } from '../api/TicketsApi';
+import { TicketsPage } from '../pages/tickets/TicketsPage';
 import { AppointmentsApi, BillingApi } from '../api/AppointmentsApi';
 import { AuthApi } from '../api/AuthApi';
 import { ContactFieldsApi } from '../api/ContactFieldsApi';
@@ -132,6 +134,8 @@ type Fixtures = {
   sidebar: Sidebar;
   sidebarApi: SidebarApi;
   segmentsApi: SegmentsApi;
+  ticketsApi: TicketsApi;
+  ticketsPage: TicketsPage;
   lifecyclesApi: LifecyclesApi;
   appointmentsApi: AppointmentsApi;
   billingApi: BillingApi;
@@ -272,6 +276,14 @@ export const test = base.extend<Fixtures>({
 
   contactsApi: async ({ request, apiHeaders }, use) => {
     await use(new ContactsApi(request, apiHeaders));
+  },
+
+  ticketsApi: async ({ request, apiHeaders }, use) => {
+    await use(new TicketsApi(request, apiHeaders));
+  },
+
+  ticketsPage: async ({ page }, use) => {
+    await use(new TicketsPage(page));
   },
 
   segmentsApi: async ({ request, apiHeaders }, use) => {

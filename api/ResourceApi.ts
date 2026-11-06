@@ -34,6 +34,8 @@ export const ENDPOINTS = {
   /** DELETE archives a workflow; `/<id>/activate`, `/deactivate`, `/restore`, `/analytics`. */
   workflows: '/v1/workflows',
   broadcasts: '/v1/broadcasts',
+  /** A ticket's comments and tags are at `/<id>/comments` and `/<id>/tags`. */
+  tickets: '/v1/tickets',
   channels: '/v1/channels',
   notificationsFeed: '/v1/notifications/feed',
   credits: '/v1/credits',

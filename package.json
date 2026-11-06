@@ -41,6 +41,7 @@
     "test:contacts": "playwright test tests/contacts",
     "test:broadcasts": "playwright test tests/broadcasts",
     "test:workflows": "playwright test tests/workflows",
+    "test:tickets": "playwright test tests/tickets",
     "test:sidebar": "playwright test tests/sidebar",
     "test:all": "node scripts/test-all.mjs",
     "test:permissions": "playwright test --project=permissions",
