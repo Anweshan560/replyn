@@ -347,17 +347,18 @@ Scheduled and hand-started runs on `main` report problems as GitHub issues, and 
 watching the repository. Each kind of alert has one issue: the first alert opens it, and later ones
 comment on it until someone closes it.
 
-| Label             | When                                                                     |
-| ----------------- | ------------------------------------------------------------------------ |
-| `ci-alert-failed` | The run failed or was cancelled.                                         |
-| `ci-alert-flaky`  | The run passed, but tests needed a retry. The comments show how often.   |
-| `ci-alert-missed` | No run started by 09:00 Nepal time, e.g. the cron-job.org token expired. |
+| Label             | When                                                                   |
+| ----------------- | ---------------------------------------------------------------------- |
+| `ci-alert-failed` | The run failed or was cancelled.                                       |
+| `ci-alert-flaky`  | The run passed, but tests needed a retry. The comments show how often. |
+| `ci-alert-missed` | No run started by 09:00 Nepal time, e.g. the 06:30 job was turned off. |
 
 The repository is public, so alerts hold only a link and a count. To check that alerts reach you, open
 **Actions > Daily Run Watchdog > Run workflow** and tick `test_alert`.
 
-The watchdog uses GitHub's own timer, which can start late. GitHub also turns scheduled workflows off
-after 60 days without activity in the repository.
+cron-job.org starts the watchdog at 09:00 Nepal time, as it does the daily run, because GitHub's own
+timer ran hours late or not at all. Both jobs use the same token, so if it expires neither can start
+and no issue opens. Keep cron-job.org's failure emails on for both jobs: they are the alert for that.
 
 ### Known bugs
 

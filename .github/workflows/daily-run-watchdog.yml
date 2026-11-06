@@ -1,12 +1,12 @@
 name: Daily Run Watchdog
 
-# The daily regression is started at 06:30 Nepal time by cron-job.org. If that stops, for example
-# because its GitHub token expired, no run fails, so nothing else would notice. This checks that a
-# run started and opens an alert if none did. Start it by hand from the Actions tab with
+# The daily regression is started at 06:30 Nepal time by cron-job.org. If that stops, no run fails,
+# so nothing else would notice. This checks that a run started and opens an alert if none did.
+# cron-job.org starts this too, at 09:00 Nepal time, because GitHub's own timer ran hours late or
+# not at all. Both jobs share one token, so an expired token stops this as well: cron-job.org's
+# failure emails cover that case (see README, "Alerts"). Start it by hand from the Actions tab with
 # "test_alert" ticked to prove that alerts reach you.
 on:
-  schedule:
-    - cron: '15 3 * * *' # 09:00 Nepal time (UTC+5:45); GitHub may start it late, which is fine here
   workflow_dispatch:
     inputs:
       test_alert:
