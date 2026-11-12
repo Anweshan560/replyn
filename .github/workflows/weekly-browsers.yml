@@ -1,0 +1,128 @@
+name: Weekly Browsers and Screenshots
+
+# Once a week, on Linux:
+#   1. the smoke tests on Firefox, WebKit (Safari's engine) and phone sizes (npm run test:browsers)
+#   2. screenshot comparison against tests/visual/visual.spec.ts-snapshots (npm run test:visual)
+# See README, "Browsers and screenshots".
+#
+# Reference screenshots: start this by hand (Actions > Weekly Browsers and Screenshots > Run
+# workflow) with "update_screenshots" ticked. The new images are uploaded as the
+# "visual-references" artifact, and the run tries to open a pull request with them. The first time,
+# do this before the weekly run, or the comparison fails for lack of references.
+on:
+  schedule:
+    - cron: '0 1 * * 0' # Sundays 06:45 Nepal time (01:00 UTC), after the Sunday exclusive run
+  workflow_dispatch:
+    inputs:
+      update_screenshots:
+        description: Take new reference screenshots instead of comparing
+        type: boolean
+        default: false
+
+# Shares the test workspace with the other test runs, so never at the same time.
+concurrency:
+  group: replyn-test-workspace
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  browsers:
+    name: Browsers and screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TEST_USERNAME: ${{ secrets.SECRETU }}
+      TEST_PASSWORD: ${{ secrets.SECRETP }}
+      TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
+      FAILED_TESTS_SHEET_ID: ${{ vars.FAILED_TESTS_SHEET_ID }}
+      GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Smoke tests on Firefox, WebKit and phones
+        id: browsers
+        if: ${{ !inputs.update_screenshots }}
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/browsers
+        run: npm run test:browsers -- --output=test-results/browsers
+
+      - name: Screenshot comparison
+        id: visual
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/visual
+        run: |
+          if [ "${{ inputs.update_screenshots }}" = "true" ]; then
+            npm run test:visual -- --output=test-results/visual --update-snapshots=all
+          else
+            npm run test:visual -- --output=test-results/visual
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-browsers-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload new reference screenshots
+        if: inputs.update_screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-references
+          path: tests/visual/**/*-linux.png
+          if-no-files-found: error
+
+      # Needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull
+      # requests". Without it, download the visual-references artifact and commit the images yourself.
+      - name: Open a pull request with the new references
+        if: inputs.update_screenshots && steps.visual.outcome == 'success'
+        continue-on-error: true
+        run: |
+          branch="visual-references-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add tests/visual
+          if git diff --cached --quiet; then echo "The references did not change."; exit 0; fi
+          git commit -m "Update visual reference screenshots"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Update visual reference screenshots" \
+            --body "New reference screenshots taken by $RUN_URL. Check each image before merging."
+
+      - name: Fail if a check failed
+        if: steps.browsers.outcome == 'failure' || steps.visual.outcome == 'failure'
+        run: |
+          echo "Browsers: ${{ steps.browsers.outcome }}, screenshots: ${{ steps.visual.outcome }}"
+          exit 1
+
+      - name: Alert about a failed weekly run
+        if: failure() && github.event_name == 'schedule'
+        run: |
+          bash .github/scripts/alert.sh ci-alert-browsers 'The weekly browser or screenshot check failed' \
+            "Browsers: ${{ steps.browsers.outcome }}, screenshots: ${{ steps.visual.outcome }}: $RUN_URL"

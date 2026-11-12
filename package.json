@@ -48,7 +48,9 @@
     "test:sweep:dry": "cross-env SWEEP_TEST_DATA=true SWEEP_DRY_RUN=true playwright test --project=cleanup",
     "instagram:login": "tsx scripts/instagram/login.ts",
     "instagram:send": "tsx scripts/instagram/send-dm.ts",
-    "test:a11y": "playwright test tests/accessibility"
+    "test:a11y": "playwright test tests/accessibility",
+    "test:browsers": "cross-env CROSS_BROWSER=true playwright test --project=firefox --project=webkit --project=mobile-chrome --project=mobile-safari",
+    "test:visual": "cross-env VISUAL=true playwright test --project=visual"
   },
   "keywords": [],
   "author": "",

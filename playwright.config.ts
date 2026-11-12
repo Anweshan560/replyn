@@ -53,6 +53,22 @@ const INBOX_CONVERSATION_TESTS = /inbox[\\/](conversation|instagram)[\\/].*\.spe
 const QUARANTINE = /@quarantine/;
 const quarantineRun = process.env.QUARANTINE_TESTS === 'true';
 
+/**
+ * The smoke tests on other browsers and on phones, and the screenshot comparisons, only when asked
+ * for: `npm run test:browsers` (CROSS_BROWSER=true) and `npm run test:visual` (VISUAL=true). Normal
+ * runs leave them out, so they need only Chromium. They run weekly on CI (Linux), where the
+ * reference screenshots are taken. See README, "Browsers and screenshots".
+ */
+const CROSS_BROWSERS = {
+  firefox: devices['Desktop Firefox'],
+  webkit: devices['Desktop Safari'],
+  'mobile-chrome': devices['Pixel 7'],
+  'mobile-safari': devices['iPhone 15'],
+};
+const crossBrowserRun = process.env.CROSS_BROWSER === 'true';
+const visualRun = process.env.VISUAL === 'true';
+const VISUAL_TESTS = /visual[\\/].*\.spec\.ts/;
+
 /** A project's tag filter: its own grep/grepInvert, plus leaving out (or only running) quarantine. */
 function tagFilter(grep?: RegExp, grepInvert?: RegExp): { grep?: RegExp; grepInvert?: RegExp[] } {
   if (quarantineRun) {
@@ -127,10 +143,31 @@ export default defineConfig({
         WORKSPACE_SETTINGS_TESTS,
         PERMISSION_TESTS,
         INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
       ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
+    ...(crossBrowserRun
+      ? Object.entries(CROSS_BROWSERS).map(([name, device]) => ({
+          name,
+          ...tagFilter(/@smoke/),
+          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, VISUAL_TESTS],
+          dependencies: ['setup'],
+          use: { ...device, storageState: AUTH_FILE },
+        }))
+      : []),
+    // Screenshot comparisons against reference images in tests/visual/*-snapshots (taken on Linux).
+    ...(visualRun
+      ? [
+          {
+            name: 'visual',
+            testMatch: VISUAL_TESTS,
+            dependencies: ['setup'],
+            use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+          },
+        ]
+      : []),
     // Browser tests of the user interface: every *.spec.ts that is not an API test.
     {
       name: 'ui',
@@ -141,6 +178,7 @@ export default defineConfig({
         WORKSPACE_SETTINGS_TESTS,
         PERMISSION_TESTS,
         INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
       ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
