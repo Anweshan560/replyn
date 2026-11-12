@@ -172,12 +172,21 @@ export type AgentSession = {
  * hands out login tokens. Returns the headers every API call needs.
  */
 async function apiHeadersFor(page: Page): Promise<{ workspaceId: string; headers: HeadersProvider }> {
-  const firstApiCall = page.waitForRequest(
-    (request) => request.url().startsWith(env.apiUrl) && !!request.headers()['x-workspace-id'],
-  );
+  // Usually the app's first API call carries the workspace ID. Some page loads it was never seen and
+  // the test waited its whole 120 s (issue #5), so wait 20 s at most, then read the ID from the
+  // sidebar's Inbox link (/inbox/<workspace id>), which is always on the page.
+  const firstApiCall = page
+    .waitForRequest(
+      (request) => request.url().startsWith(env.apiUrl) && !!request.headers()['x-workspace-id'],
+      {
+        timeout: 20_000,
+      },
+    )
+    .then((request) => request.headers()['x-workspace-id'])
+    .catch(() => undefined);
   await page.goto('/dashboard');
-  const workspaceId = (await firstApiCall).headers()['x-workspace-id'];
-  await page.waitForFunction(() => (window as any).Clerk?.session);
+  const workspaceId = (await firstApiCall) ?? (await workspaceIdFromSidebar(page));
+  await page.waitForFunction(() => (window as any).Clerk?.session, null, { timeout: 30_000 });
   return {
     workspaceId,
     headers: async () => ({
@@ -187,6 +196,17 @@ async function apiHeadersFor(page: Page): Promise<{ workspaceId: string; headers
       'x-workspace-id': workspaceId,
     }),
   };
+}
+
+/** The current workspace's ID, from the sidebar's Inbox link. */
+async function workspaceIdFromSidebar(page: Page): Promise<string> {
+  const inboxLink = page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Inbox' });
+  const href = await inboxLink.getAttribute('href', { timeout: 30_000 });
+  const workspaceId = href?.match(/^\/inbox\/([0-9a-f-]{36})/)?.[1];
+  if (!workspaceId) throw new Error(`Could not read the workspace ID from the Inbox link (${href})`);
+  return workspaceId;
 }
 
 /**
