@@ -51,5 +51,8 @@ test.describe('Instagram inbound messages API', { tag: ['@inbox', '@instagram'] 
       expect(reply.channel.type).toBe('instagram');
     });
     await test.step('Instagram reports it delivered', () => inboxApi.expectDelivered(contactId, reply.id));
+    await test.step('the conversation is no longer in Unreplied', async () => {
+      expect(await inboxApi.listedContactIds({ view: 'unattended' })).not.toContain(contactId);
+    });
   });
 });

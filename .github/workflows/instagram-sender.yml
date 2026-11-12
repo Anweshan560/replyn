@@ -1,18 +1,29 @@
 name: Instagram Sender
 
 # Sends one Instagram DM a day from the throwaway sender account to the Instagram account connected
-# to the test workspace, so the inbox tests (tests/inbox/instagram) always have a fresh inbound
-# message to find and reply to. See README, "Daily Instagram message".
+# to the test workspace, so the inbox tests (tests/inbox) always have a fresh inbound message to
+# find and reply to. See README, "Daily Instagram message".
 #
 # cron-job.org starts it at 06:15 Nepal time, before the 06:30 daily run (GitHub's own timer runs
-# hours late). No GitHub schedule as a backup: a late duplicate would send a second message.
+# hours late). No GitHub schedule for the send: a late duplicate would send a second message.
 # It logs in with the saved session in the IG_SENDER_SESSION secret, never with the password. When
 # Instagram ends that session, the run fails and opens an alert issue: log in again with
 # `npm run instagram:login` and update the secret.
+#
+# Every Monday GitHub's own timer also starts it in check mode: it only opens Instagram to see that
+# the session is still valid and sends nothing, so it warns before a morning's message is lost. A
+# late start does no harm there. Tick "check_only" to run the check by hand.
 on:
   workflow_dispatch:
+    inputs:
+      check_only:
+        description: Only check the session is still valid; send nothing
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 4 * * 1' # Mondays 09:45 Nepal time (04:00 UTC): session check only
 
-# Never two sends at once.
+# Never two runs at once.
 concurrency:
   group: instagram-sender
   cancel-in-progress: false
@@ -23,7 +34,7 @@ permissions:
 
 jobs:
   send:
-    name: Send today's message
+    name: ${{ (github.event_name == 'schedule' || inputs.check_only) && 'Check the session' || 'Send today''s message' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -32,6 +43,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CHECK_ONLY: ${{ github.event_name == 'schedule' || inputs.check_only }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,11 +62,15 @@ jobs:
 
       # Exit code 2 means Instagram ended the session; anything else non-zero is another failure.
       # No screenshots are uploaded: the repository is public and they would show the DM thread.
-      - name: Send the message
+      - name: Send the message (or only check the session)
         id: send
         run: |
           set +e
-          npm run instagram:send
+          if [ "$CHECK_ONLY" = "true" ]; then
+            npm run instagram:send -- --check
+          else
+            npm run instagram:send
+          fi
           code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           exit $code
@@ -63,10 +79,16 @@ jobs:
         if: failure() && steps.send.outputs.code == '2'
         run: |
           bash .github/scripts/alert.sh ci-alert-instagram-session 'Log in to the Instagram sender again' \
-            "Instagram ended the sender's session, so today's message was not sent: $RUN_URL. Run \`npm run instagram:login\`, then paste secrets/instagram-sender.json.base64.txt into the IG_SENDER_SESSION secret and re-run this workflow."
+            "Instagram ended the sender's session ($([ "$CHECK_ONLY" = "true" ] && echo 'found by the weekly check' || echo "today's message was not sent")): $RUN_URL. Run \`npm run instagram:login\`, then paste secrets/instagram-sender.json.base64.txt into the IG_SENDER_SESSION secret and re-run this workflow."
 
       - name: Alert that the message was not sent
-        if: failure() && steps.send.outputs.code != '2'
+        if: failure() && steps.send.outputs.code != '2' && env.CHECK_ONLY != 'true'
         run: |
           bash .github/scripts/alert.sh ci-alert-instagram-send 'The daily Instagram message was not sent' \
             "The Instagram sender failed, so today's inbox tests will fail too: $RUN_URL. Run \`npm run instagram:send -- --headed\` locally to see what Instagram shows."
+
+      - name: Alert that the session check failed
+        if: failure() && steps.send.outputs.code != '2' && env.CHECK_ONLY == 'true'
+        run: |
+          bash .github/scripts/alert.sh ci-alert-instagram-send 'The Instagram session check failed' \
+            "The weekly session check could not open Instagram: $RUN_URL. Run \`npm run instagram:send -- --check\` locally to see why."

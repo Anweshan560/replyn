@@ -14,3 +14,7 @@ node_modules/
 # Playwright MCP browser snapshots and logs
 /.playwright-mcp/
 /postman/
+
+# Screenshot references are taken on Linux (CI); ones made on Windows or macOS stay local.
+tests/visual/**/*-win32.png
+tests/visual/**/*-darwin.png

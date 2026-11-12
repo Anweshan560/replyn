@@ -785,3 +785,27 @@ export function buildWorkflow(): WorkflowData {
     description: `Test workflow: ${faker.lorem.sentence({ min: 4, max: 8 })}`,
   };
 }
+
+/**
+ * Inbox → an internal note on a conversation. Notes cannot be deleted, so the marker is all that
+ * tells test notes apart on the shared test conversation.
+ */
+export function buildNoteText(): string {
+  const text = faker.helpers.arrayElement([
+    'Asked about prices, send the list',
+    'Wants an appointment next week',
+    'Prefers to be contacted in the evening',
+    'Waiting for their insurance details',
+  ]);
+  return `${text} ${uniqueSuffix()}`;
+}
+
+/** Inbox → Mark as follow up: the reminder's title. */
+export function buildFollowUpTitle(): string {
+  const text = faker.helpers.arrayElement([
+    'Send the price list',
+    'Confirm the booking',
+    'Check on their recovery',
+  ]);
+  return `${text} ${uniqueSuffix()}`;
+}

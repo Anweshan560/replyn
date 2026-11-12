@@ -3,6 +3,7 @@
  *
  *   npm run instagram:send            (no visible browser)
  *   npm run instagram:send -- --headed
+ *   npm run instagram:send -- --check    (only checks the session is still valid; sends nothing)
  *
  * Uses the session saved by `npm run instagram:login` (or the IG_SENDER_SESSION secret on CI).
  * Exit codes: 0 sent, 2 session expired (log in again), 1 anything else.
@@ -62,6 +63,17 @@ async function openThread(page: Page, receiverHandle: string): Promise<void> {
   await dismissPopups(page);
 }
 
+/** Open the DM inbox, as the sender would, and fail if Instagram asks to log in again. */
+async function checkSession(page: Page): Promise<void> {
+  await page.goto('https://www.instagram.com/direct/inbox/');
+  await pause(3000, 5000);
+  await assertLoggedIn(page);
+  const cookies = await page.context().cookies('https://www.instagram.com');
+  if (!cookies.some((c) => c.name === 'sessionid' && c.value)) {
+    throw new SessionExpiredError('The Instagram session has expired. Run `npm run instagram:login`.');
+  }
+}
+
 async function main(): Promise<void> {
   const receiverHandle = getReceiverHandle();
   if (!ensureSessionFile()) {
@@ -77,6 +89,11 @@ async function main(): Promise<void> {
   const page = await context.newPage();
 
   try {
+    if (process.argv.includes('--check')) {
+      await checkSession(page);
+      console.log('The Instagram session is valid.');
+      return;
+    }
     await openThread(page, receiverHandle);
 
     const composer = page
