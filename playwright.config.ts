@@ -42,7 +42,7 @@ const hasAgentAccount = !!getAgentCredentials();
  * each other's changes in parallel, so they have a project of their own and run one at a time
  * (UI and API). Some also log in as the Agent, for mentions and live updates.
  */
-const INBOX_CONVERSATION_TESTS = /inbox[\\/](conversation|instagram)[\\/].*\.spec\.ts/;
+const INBOX_CONVERSATION_TESTS = /inbox[\\/](conversation|instagram|workflows)[\\/].*\.spec\.ts/;
 
 /**
  * Quarantine: a flaky test tagged @quarantine (with a comment saying why and since when) is left out
@@ -206,12 +206,28 @@ export default defineConfig({
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
+    // Before the inbox tests: switch on the workflow that the next morning's message should start.
+    // Its teardown runs after them and closes the test conversation (tests/inbox/setup).
+    {
+      name: 'inbox-setup',
+      testDir: './tests/inbox/setup',
+      testMatch: /inbox\.setup\.ts/,
+      dependencies: ['setup'],
+      teardown: 'inbox-teardown',
+      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+    },
+    {
+      name: 'inbox-teardown',
+      testDir: './tests/inbox/setup',
+      testMatch: /inbox\.teardown\.ts/,
+      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+    },
     // The shared Instagram conversation (UI and API): one test at a time, next to the parallel projects.
     {
       name: 'inbox',
       testMatch: INBOX_CONVERSATION_TESTS,
       ...tagFilter(),
-      dependencies: ['setup', 'agent-setup'],
+      dependencies: ['setup', 'agent-setup', 'inbox-setup'],
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
