@@ -84,6 +84,15 @@ changing it at once would overwrite each other. Its tests have their own `worksp
 (one worker), which runs alongside the parallel tests in every normal run, and each test puts the
 wrap-up back as it found it.
 
+**Why the inbox conversation tests run one at a time:** `tests/inbox/conversation` and
+`tests/inbox/instagram` all work on the one real Instagram conversation (see "Daily Instagram
+message"). They have their own `inbox` project (one worker, UI and API), which runs alongside the
+parallel tests in every normal run but not in the quick check. The `testConversation` fixture saves the
+conversation's state (status, assignee, lifecycle, tags, follow-up) before each test and puts it back
+afterwards. Notes cannot be deleted, so test notes stay on the conversation, marked `qa` + 6 digits.
+Tests that need a second person (mentions, live updates) use the `agent` fixture: the Agent account in
+a browser of its own, skipped without `TEST_AGENT_USERNAME` / `TEST_AGENT_PASSWORD`.
+
 Every run starts with `tests/setup/auth.setup.ts`, which logs in once and saves the session for the other tests.
 The permission tests (`tests/permissions`) start from `tests/setup/agent.setup.ts` instead, logged in as the
 Agent. Writes the Agent may not make are sent with an empty body: the API checks the permission first, so
@@ -99,26 +108,26 @@ marker and is not swept.
 
 ## Folder structure
 
-| Folder                    | What's in it                                                                                              |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `tests/auth/`             | Login: UI (`login.spec.ts`) and API (`login.api.spec.ts`).                                                |
-| `tests/clinic/<feature>/` | Doctors, Treatments, Departments, Appointments, Billing: UI and API tests side by side.                   |
-| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, Wrap-Up, API Keys, …).              |
-| `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                  |
-| `tests/inbox/<feature>/`  | Inbox → saved Views: UI and API tests side by side.                                                       |
-| `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive). |
-| `tests/broadcasts/`       | Broadcasts: list, search, status filter, New broadcast form up to validation. Never creates or sends one. |
-| `tests/workflows/`        | Workflows list: tiles, tabs, trigger filter, Live switch, duplicate, archive/restore (canvas is manual).  |
-| `tests/sidebar/`          | Sidebar widgets: notification bell and panel, AI credits, account menu, search, links. Read only.         |
-| `tests/setup/`            | Logs in once before the other tests and saves the session.                                                |
-| `pages/`                  | Page objects (`auth/`, `clinic/`, `settings/`, `contacts/`, `inbox/`): _how_ to use each page.            |
-| `api/`                    | API clients: one small class per endpoint group, plus the field-name mapping to the UI forms.             |
-| `fixtures/`               | The `test` that every spec imports, ready-made with page objects, API clients and cleanup.                |
-| `config/`                 | `env.ts`: the only place that reads `.env` (URLs, credentials, limits).                                   |
-| `utils/`                  | Helpers: Faker test data, network recording/mocking, response timing.                                     |
-| `reporters/`              | Writes a screenshot and plain-text summary of every failed test to `test-results/failures/`.              |
-| `scripts/`                | `test-all.mjs`: runs the suite, then the exclusive tests on their own.                                    |
-| `.github/`                | CI: smoke test, then the full suite, then the exclusive tests, on every push and PR.                      |
+| Folder                    | What's in it                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `tests/auth/`             | Login: UI (`login.spec.ts`) and API (`login.api.spec.ts`).                                                 |
+| `tests/clinic/<feature>/` | Doctors, Treatments, Departments, Appointments, Billing: UI and API tests side by side.                    |
+| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, Wrap-Up, API Keys, …).               |
+| `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                   |
+| `tests/inbox/<feature>/`  | Inbox: saved Views, conversation actions (`conversation/`) and the daily Instagram message (`instagram/`). |
+| `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive).  |
+| `tests/broadcasts/`       | Broadcasts: list, search, status filter, New broadcast form up to validation. Never creates or sends one.  |
+| `tests/workflows/`        | Workflows list: tiles, tabs, trigger filter, Live switch, duplicate, archive/restore (canvas is manual).   |
+| `tests/sidebar/`          | Sidebar widgets: notification bell and panel, AI credits, account menu, search, links. Read only.          |
+| `tests/setup/`            | Logs in once before the other tests and saves the session.                                                 |
+| `pages/`                  | Page objects (`auth/`, `clinic/`, `settings/`, `contacts/`, `inbox/`): _how_ to use each page.             |
+| `api/`                    | API clients: one small class per endpoint group, plus the field-name mapping to the UI forms.              |
+| `fixtures/`               | The `test` that every spec imports, ready-made with page objects, API clients and cleanup.                 |
+| `config/`                 | `env.ts`: the only place that reads `.env` (URLs, credentials, limits).                                    |
+| `utils/`                  | Helpers: Faker test data, network recording/mocking, response timing.                                      |
+| `reporters/`              | Writes a screenshot and plain-text summary of every failed test to `test-results/failures/`.               |
+| `scripts/`                | `test-all.mjs`: runs the suite, then the exclusive tests on their own.                                     |
+| `.github/`                | CI: smoke test, then the full suite, then the exclusive tests, on every push and PR.                       |
 
 File names decide how a test runs: `*.api.spec.ts` runs in the `api` project, other `*.spec.ts` files in `ui`.
 
@@ -364,12 +373,17 @@ and no issue opens. Keep cron-job.org's failure emails on for both jobs: they ar
 
 ### Daily Instagram message
 
-The inbox tests in `tests/inbox/instagram` need a real inbound Instagram message. A throwaway
+The inbox tests in `tests/inbox/instagram` and `tests/inbox/conversation` need a real Instagram conversation. A throwaway
 Instagram account (the "sender") sends one every morning to the Instagram account connected to the
 test workspace (the "receiver", a Professional account). The tests then find it in the inbox, reply
 from Replyn and wait until Instagram reports the reply delivered. Instagram only allows replies within
 24 hours of the person's last message, so the tests use the newest `AUTOTEST` message from the last 24
-hours. If there is none, they fail and point here.
+hours. If there is none, they fail and point here. The conversation tests (assign, close, snooze,
+notes…) send nothing to Instagram, so they only need the conversation to exist.
+
+What is sent to the sender's Instagram on each run: the UI and API reply tests (2 texts) and the image
+test (1 image). Images must be a normal size: Instagram refuses tiny ones (the 70-byte
+`tests/assets/sample.png` fails with error 100), so the test sends `tests/assets/inbox-image.jpg`.
 
 | What                               | Where                                                                    |
 | ---------------------------------- | ------------------------------------------------------------------------ |

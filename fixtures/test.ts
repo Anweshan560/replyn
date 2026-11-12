@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page } from '@playwright/test';
 import { AppointmentsApi, BillingApi } from '../api/AppointmentsApi';
 import { AuthApi } from '../api/AuthApi';
 import { ContactFieldsApi } from '../api/ContactFieldsApi';
@@ -27,8 +27,8 @@ import { WrapUpApi } from '../api/WrapUpApi';
 import { WorkflowsApi } from '../api/WorkflowsApi';
 import { BroadcastsApi, ChannelsApi } from '../api/BroadcastsApi';
 import { SidebarApi } from '../api/SidebarApi';
-import { InboxApi } from '../api/InboxApi';
-import { env } from '../config/env';
+import { InboxApi, type TestConversation } from '../api/InboxApi';
+import { AGENT_AUTH_FILE, env, getAgentCredentials } from '../config/env';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SavedViewsPage } from '../pages/inbox/SavedViewsPage';
 import { ConversationPage } from '../pages/inbox/ConversationPage';
@@ -144,7 +144,50 @@ type Fixtures = {
   /** Clerk login calls. Needs no browser and no saved session. */
   authApi: AuthApi;
   cleanup: Cleanup;
+  /**
+   * The Instagram conversation the inbox tests share (from the daily message job). Its state is
+   * saved before the test and put back afterwards, even when the test fails.
+   */
+  testConversation: TestConversation;
+  /**
+   * The limited Agent account in a browser of its own, for tests that need two people (mentions,
+   * live updates). The test is skipped when TEST_AGENT_USERNAME / TEST_AGENT_PASSWORD are not set.
+   */
+  agent: AgentSession;
 };
+
+/** A second person, logged in as the Agent: their own page, inbox API and user id. */
+export type AgentSession = {
+  page: Page;
+  inboxApi: InboxApi;
+  conversationPage: ConversationPage;
+  /** The Agent's user id, e.g. for `mentioned` in a note. */
+  id: string;
+  /** As the Mentions list shows it, e.g. "anweshan agent". */
+  name: string;
+};
+
+/**
+ * Open the app once to read the workspace ID from its own API calls, and to reach Clerk, which
+ * hands out login tokens. Returns the headers every API call needs.
+ */
+async function apiHeadersFor(page: Page): Promise<{ workspaceId: string; headers: HeadersProvider }> {
+  const firstApiCall = page.waitForRequest(
+    (request) => request.url().startsWith(env.apiUrl) && !!request.headers()['x-workspace-id'],
+  );
+  await page.goto('/dashboard');
+  const workspaceId = (await firstApiCall).headers()['x-workspace-id'];
+  await page.waitForFunction(() => (window as any).Clerk?.session);
+  return {
+    workspaceId,
+    headers: async () => ({
+      // Tokens expire after 60 seconds, so ask Clerk on every request. It caches them, so this is fast.
+      authorization: `Bearer ${await page.evaluate(() => (window as any).Clerk.session.getToken())}`,
+      'x-tenant-id': env.tenantId,
+      'x-workspace-id': workspaceId,
+    }),
+  };
+}
 
 /**
  * The `test` every spec imports. On top of Playwright's built-ins it provides ready-made
@@ -213,21 +256,8 @@ export const test = base.extend<Fixtures>({
   },
 
   apiHeaders: async ({ page }, use) => {
-    // The saved session logs the browser in. Open the app once to read the workspace ID from
-    // its own API calls, and to reach Clerk, which hands out login tokens.
-    const firstApiCall = page.waitForRequest(
-      (request) => request.url().startsWith(env.apiUrl) && !!request.headers()['x-workspace-id'],
-    );
-    await page.goto('/dashboard');
-    const workspaceId = (await firstApiCall).headers()['x-workspace-id'];
-    await page.waitForFunction(() => (window as any).Clerk?.session);
-
-    await use(async () => ({
-      // Tokens expire after 60 seconds, so ask Clerk on every request. It caches them, so this is fast.
-      authorization: `Bearer ${await page.evaluate(() => (window as any).Clerk.session.getToken())}`,
-      'x-tenant-id': env.tenantId,
-      'x-workspace-id': workspaceId,
-    }));
+    // The saved session logs the browser in.
+    await use((await apiHeadersFor(page)).headers);
   },
 
   doctorsApi: async ({ request, apiHeaders }, use) => {
@@ -451,6 +481,32 @@ export const test = base.extend<Fixtures>({
   },
 
   // Depends on `request` and `apiHeaders` so both are still available while cleanup runs.
+  testConversation: async ({ inboxApi }, use) => {
+    const conversation = await inboxApi.getTestConversation();
+    const before = await inboxApi.snapshotConversation(conversation.contactId);
+    await use(conversation);
+    await inboxApi.restoreConversation(conversation.contactId, before);
+  },
+
+  agent: async ({ browser, request }, use, testInfo) => {
+    testInfo.skip(!getAgentCredentials(), 'TEST_AGENT_USERNAME and TEST_AGENT_PASSWORD are not set');
+    const context = await browser.newContext({
+      storageState: AGENT_AUTH_FILE,
+      baseURL: env.baseUrl,
+      permissions: ['notifications'],
+    });
+    const page = await context.newPage();
+    const { workspaceId, headers } = await apiHeadersFor(page);
+    const inboxApi = new InboxApi(request, headers);
+    await use({
+      page,
+      inboxApi,
+      conversationPage: new ConversationPage(page, workspaceId),
+      ...(await inboxApi.currentUser()),
+    });
+    await context.close();
+  },
+
   cleanup: async ({ request: _request, apiHeaders: _apiHeaders }, use) => {
     const actions: { description: string; action: () => Promise<void> }[] = [];
     await use({ add: (description, action) => actions.push({ description, action }) });

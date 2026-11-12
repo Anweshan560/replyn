@@ -370,6 +370,39 @@
       "tests": [
         "tests/contacts/contacts-actions.api.spec.ts › should reject a closing note category that does not exist"
       ]
+    },
+    {
+      "key": "close-response-stale-closing-note",
+      "issue": null,
+      "found": "2026-11-12",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Closing a conversation answers with the previous closing note, not the new one",
+      "steps": [
+        "Close a conversation with a closing note: PATCH /v1/contacts/<id> with status \"closed\" and closingNote { topicId, topicName, summary } (what the Close dialog sends).",
+        "Compare lastClosingNoteId and lastClosingNoteAt in the response with a GET /v1/contacts/<id> straight afterwards."
+      ],
+      "expected": "The response shows the closing note that was just saved, like the GET does.",
+      "actual": "The response still has the previous closing note's id and time (or null the first time); only a fresh GET shows the new one. Anything that uses the response shows the wrong closing note.",
+      "tests": [
+        "tests/inbox/conversation/conversation-actions.api.spec.ts › should answer a close with the closing note it saved"
+      ]
+    },
+    {
+      "key": "reopen-open-conversation-logged",
+      "issue": null,
+      "found": "2026-11-12",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Setting an open conversation to \"open\" again adds a \"Conversation opened\" line to the thread",
+      "steps": [
+        "Take an open conversation.",
+        "PATCH /v1/contacts/<id> with { \"status\": \"open\" } (nothing changes).",
+        "Look at the thread, or GET /v1/contacts/<id>/events?type=activity."
+      ],
+      "expected": "Nothing is logged: the status did not change.",
+      "actual": "A new \"Conversation opened by you\" entry is added every time, so the thread fills with repeated lines (seen 4 in a row) and real messages get pushed out of view.",
+      "tests": [
+        "tests/inbox/conversation/conversation-actions.api.spec.ts › should not log anything when an open conversation is set to open"
+      ]
     }
   ]
 }
