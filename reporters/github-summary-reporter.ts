@@ -49,6 +49,15 @@ export default class GithubSummaryReporter implements Reporter {
       '',
     ];
 
+    lines.push(...byProject(tests), '');
+    if (failed.some((test) => /No "AUTOTEST" Instagram message/.test(firstError(test)))) {
+      lines.push(
+        '> ⚠️ The inbox tests found no Instagram message from the last 24 hours: check the latest ' +
+          '**Instagram Sender** run (see README, "Daily Instagram message").',
+        '',
+      );
+    }
+
     if (fixedBugs.length) {
       lines.push(
         '### 🎉 Known bugs that now pass (probably fixed)',
@@ -82,6 +91,7 @@ export default class GithubSummaryReporter implements Reporter {
         '',
       );
     }
+    lines.push(...slowest(tests, 5), '');
     lines.push('Full report with screenshots and traces: **Artifacts** at the bottom of this page.', '');
 
     appendFileSync(file, lines.join('\n'));
@@ -93,21 +103,77 @@ function minutes(ms: number): string {
   return `${Math.floor(total / 60)}m ${total % 60}s`;
 }
 
-/** A markdown table of tests: name, first error line, source. */
-function table(tests: TestCase[]): string[] {
-  const rows = tests.map((test) => {
-    const [, project, file, ...titles] = test.titlePath();
-    const result =
-      [...test.results].reverse().find((attempt) => attempt.errors.length) ?? test.results.at(-1);
-    const error = (result?.errors[0]?.message ?? result?.status ?? '')
+/** The first line of a test's last error (or its status), without colour codes. */
+function firstError(test: TestCase): string {
+  const result = [...test.results].reverse().find((attempt) => attempt.errors.length) ?? test.results.at(-1);
+  return (
+    (result?.errors[0]?.message ?? result?.status ?? '')
       .replace(/\u001b\[[0-9;]*m/g, '')
       .split('\n')
       .find((line) => line.trim())
       ?.trim()
-      .slice(0, 160);
-    return `| ${escape(titles.join(' › '))} | ${project} | ${escape(error ?? '')} | \`${file.replace(/\\/g, '/')}:${test.location.line}\` |`;
+      .slice(0, 160) ?? ''
+  );
+}
+
+/** A markdown table of tests: name, first error line, source. */
+function table(tests: TestCase[]): string[] {
+  const rows = tests.map((test) => {
+    const [, project, file, ...titles] = test.titlePath();
+    return `| ${escape(titles.join(' › '))} | ${project} | ${escape(firstError(test))} | \`${file.replace(/\\/g, '/')}:${test.location.line}\` |`;
   });
   return ['| Test | Project | Error | Source |', '|---|---|---|---|', ...rows];
+}
+
+/** Per project (ui, api, inbox, …): how many passed, failed, were flaky or skipped. */
+function byProject(tests: TestCase[]): string[] {
+  const rows = new Map<string, { passed: number; failed: number; flaky: number; skipped: number }>();
+  for (const test of tests) {
+    if (!test.results.length && test.outcome() !== 'skipped') continue;
+    const name = test.parent.project()?.name ?? '-';
+    const row = rows.get(name) ?? { passed: 0, failed: 0, flaky: 0, skipped: 0 };
+    const outcome = test.outcome();
+    if (outcome === 'expected') row.passed++;
+    else if (outcome === 'unexpected') row.failed++;
+    else if (outcome === 'flaky') row.flaky++;
+    else row.skipped++;
+    rows.set(name, row);
+  }
+  if (rows.size < 2) return [];
+  return [
+    '<details><summary>By project</summary>',
+    '',
+    '| Project | Passed | Failed | Flaky | Skipped |',
+    '|---|---|---|---|---|',
+    ...[...rows].map(
+      ([name, r]) =>
+        `| ${name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} | ${r.flaky} | ${r.skipped} |`,
+    ),
+    '',
+    '</details>',
+  ];
+}
+
+/** The slowest tests (all attempts added up), to spot tests that are getting slower. */
+function slowest(tests: TestCase[], count: number): string[] {
+  const timed = tests
+    .map((test) => ({ test, ms: test.results.reduce((sum, result) => sum + result.duration, 0) }))
+    .filter(({ ms }) => ms > 0)
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, count);
+  if (!timed.length) return [];
+  return [
+    `<details><summary>${count} slowest tests</summary>`,
+    '',
+    '| Test | Project | Time |',
+    '|---|---|---|',
+    ...timed.map(({ test, ms }) => {
+      const [, project, , ...titles] = test.titlePath();
+      return `| ${escape(titles.join(' › '))} | ${project} | ${minutes(ms)} |`;
+    }),
+    '',
+    '</details>',
+  ];
 }
 
 /** Keep table cells on one line and stop "|" from splitting them. */
