@@ -286,6 +286,44 @@ export class ConversationPage {
     return this.page.getByRole('button', { name: new RegExp(`Select ${name} ${name}`) });
   }
 
+  /**
+   * Quick filters: pick one value of a field (e.g. Channel → "testqaadmin") and Apply. The field's
+   * own dropdown button is 0 px wide, so the click goes to the value shown in the field.
+   */
+  async applyQuickFilter(field: 'Channel' | 'Assignee' | 'Tags', option: string): Promise<void> {
+    await this.button('Quick filters').click();
+    const dialog = this.page.getByRole('dialog', { name: 'Quick filters' });
+    const trigger = dialog.getByRole('group').filter({ has: this.page.getByRole('button', { name: field }) });
+    await trigger.locator('[data-slot="autocomplete-value"]').click();
+    const options = this.page.getByRole('listbox', { name: `Suggestions ${field}` });
+    await options.getByRole('option', { name: option }).click();
+    // The options stay open over the Apply button; Escape closes them, not the dialog.
+    await this.page.keyboard.press('Escape');
+    await expect(options).toBeHidden();
+    await expect(trigger).toContainText(option);
+    const listed = waitForApiResponse(this.page, 'POST', `${ENDPOINTS.conversations}/search`);
+    await dialog.getByRole('button', { name: 'Apply' }).click();
+    expect((await listed).ok(), 'the filtered list should load').toBe(true);
+  }
+
+  /** More options → "Opt out of broadcasts" or "Opt back in to broadcasts". */
+  async setBroadcastOptOut(optOut: boolean): Promise<void> {
+    await this.button('More options').click();
+    const item = optOut ? 'Opt out of broadcasts' : 'Opt back in to broadcasts';
+    await this.expectSaved(() => this.page.getByRole('menuitem', { name: item }).click());
+  }
+
+  /** The items of the header's More options menu, e.g. "Opt back in to broadcasts". */
+  async moreOptionsItems(): Promise<string[]> {
+    await this.button('More options').click();
+    const items = await this.page
+      .getByRole('menu', { name: 'More options' })
+      .getByRole('menuitem')
+      .allInnerTexts();
+    await this.page.keyboard.press('Escape');
+    return items.map((item) => item.trim());
+  }
+
   // --- Helpers ----------------------------------------------------------------------------------
 
   private button(name: string | RegExp): Locator {

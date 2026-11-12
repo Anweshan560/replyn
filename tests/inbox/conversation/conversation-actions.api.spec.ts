@@ -248,6 +248,51 @@ test.describe('Inbox conversation actions API', { tag: ['@inbox'] }, () => {
     expect(oldest, 'oldest first').toEqual([...oldest].sort((a, b) => a - b));
   });
 
+  test('should list only the conversations of the chosen channel', async ({ inboxApi, testConversation }) => {
+    const { contactId, channelId } = testConversation;
+    const response = await inboxApi.searchConversations({
+      status: 'open',
+      limit: 100,
+      filter: {
+        rules: [{ id: 'facet-channel', field: 'channel', operator: 'hasAnyOf', value: [channelId] }],
+      },
+    });
+    const rows: { contact: { id: string; channels: { id: string }[] } }[] = (await response.json()).data
+      .result;
+
+    expect(
+      rows.map((row) => row.contact.id),
+      'the test conversation',
+    ).toContain(contactId);
+    for (const { contact } of rows) {
+      expect(
+        contact.channels.map((c) => c.id),
+        `contact ${contact.id}`,
+      ).toContain(channelId);
+    }
+  });
+
+  test('should opt a contact out of broadcasts and back in', async ({
+    inboxApi,
+    testConversation,
+    cleanup,
+  }) => {
+    const { contactId } = testConversation;
+    cleanup.add('opt the test contact back in', () =>
+      inboxApi.updateRecord(contactId, { optedOut: false }).then(),
+    );
+
+    await test.step('optedOut true: the contact is opted out, by a teammate', async () => {
+      const state = await inboxApi.updateRecord(contactId, { optedOut: true });
+      expect(state.optedOutAt).not.toBeNull();
+      expect((await inboxApi.getConversation(contactId)).optOutSource).toBe('teammate');
+    });
+    await test.step('optedOut false: opted back in', async () => {
+      await inboxApi.updateRecord(contactId, { optedOut: false });
+      expect((await inboxApi.getConversation(contactId)).optedOutAt).toBeNull();
+    });
+  });
+
   test.describe('with the Agent', () => {
     test('should notify a mentioned teammate until they open the conversation', async ({
       inboxApi,

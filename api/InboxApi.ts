@@ -43,6 +43,9 @@ export type ConversationState = {
   followUp: { id: string; reason: string | null; dueAt: string | null } | null;
   unreadCount?: number;
   unreadMentionCount?: number;
+  /** Set when the contact opted out of broadcasts; `optOutSource` says who did it (e.g. "teammate"). */
+  optedOutAt: string | null;
+  optOutSource: string | null;
   channels: { id: string; type: string }[];
 };
 
@@ -55,6 +58,8 @@ export type ConversationFilters = {
   view?: 'mentions' | 'unattended' | 'follow_up';
   sortBy?: 'newest' | 'oldest';
   limit?: number;
+  /** Quick filters, e.g. `{ rules: [{ id: 'facet-channel', field: 'channel', operator: 'hasAnyOf', value: [channelId] }] }`. */
+  filter?: { rules: { id: string; field: string; operator: string; value: string[] }[] };
 };
 
 export type Activity = {

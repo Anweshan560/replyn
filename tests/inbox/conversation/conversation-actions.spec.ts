@@ -191,6 +191,49 @@ test.describe('Inbox conversation actions', { tag: ['@inbox'] }, () => {
     await conversationPage.replyBox.fill('');
   });
 
+  test('should filter the list by channel with Quick filters', async ({
+    page,
+    conversationPage,
+    testConversation,
+  }) => {
+    const { contactId, channelId, username } = testConversation;
+    await conversationPage.open(contactId);
+
+    await test.step('Quick filters → Channel → the Instagram account → Apply', async () => {
+      // The channel's name in the list is the connected Instagram account, as the row shows it.
+      await conversationPage.applyQuickFilter('Channel', process.env.IG_RECEIVER_HANDLE || 'testqaadmin');
+    });
+
+    await test.step('the address keeps the filter, and the Instagram conversation is listed', async () => {
+      await expect(page).toHaveURL(new RegExp(`channels=${channelId}`));
+      await expect(conversationPage.listRow(username)).toBeVisible();
+    });
+  });
+
+  test('should opt the contact out of broadcasts and back in', async ({
+    conversationPage,
+    inboxApi,
+    testConversation,
+    cleanup,
+  }) => {
+    const { contactId } = testConversation;
+    cleanup.add('opt the test contact back in', () =>
+      inboxApi.updateRecord(contactId, { optedOut: false }).then(),
+    );
+    await conversationPage.open(contactId);
+
+    await test.step('More options → Opt out of broadcasts: the menu now offers to opt back in', async () => {
+      await conversationPage.setBroadcastOptOut(true);
+      expect(await conversationPage.moreOptionsItems()).toContain('Opt back in to broadcasts');
+      expect((await inboxApi.getConversation(contactId)).optedOutAt).not.toBeNull();
+    });
+    await test.step('Opt back in to broadcasts: no longer opted out', async () => {
+      await conversationPage.setBroadcastOptOut(false);
+      expect(await conversationPage.moreOptionsItems()).toContain('Opt out of broadcasts');
+      expect((await inboxApi.getConversation(contactId)).optedOutAt).toBeNull();
+    });
+  });
+
   test.describe('with the Agent', () => {
     test('should notify a teammate mentioned in a note until they open it', async ({
       conversationPage,
