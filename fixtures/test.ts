@@ -27,9 +27,11 @@ import { WrapUpApi } from '../api/WrapUpApi';
 import { WorkflowsApi } from '../api/WorkflowsApi';
 import { BroadcastsApi, ChannelsApi } from '../api/BroadcastsApi';
 import { SidebarApi } from '../api/SidebarApi';
+import { InboxApi } from '../api/InboxApi';
 import { env } from '../config/env';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SavedViewsPage } from '../pages/inbox/SavedViewsPage';
+import { ConversationPage } from '../pages/inbox/ConversationPage';
 import { AppointmentsPage } from '../pages/clinic/AppointmentsPage';
 import { BillingPage } from '../pages/clinic/BillingPage';
 import { ContactsPage } from '../pages/contacts/ContactsPage';
@@ -106,6 +108,8 @@ type Fixtures = {
   webhooksPage: WebhooksPage;
   webhooksApi: WebhooksApi;
   savedViewsPage: SavedViewsPage;
+  conversationPage: ConversationPage;
+  inboxApi: InboxApi;
   workspaceGeneralPage: WorkspaceGeneralPage;
   hoursPage: HoursPage;
   slaPage: SlaPage;
@@ -392,6 +396,14 @@ export const test = base.extend<Fixtures>({
 
   savedViewsPage: async ({ page, workspaceId }, use) => {
     await use(new SavedViewsPage(page, workspaceId));
+  },
+
+  conversationPage: async ({ page, workspaceId }, use) => {
+    await use(new ConversationPage(page, workspaceId));
+  },
+
+  inboxApi: async ({ request, apiHeaders }, use) => {
+    await use(new InboxApi(request, apiHeaders));
   },
 
   customViewsApi: async ({ request, apiHeaders }, use) => {

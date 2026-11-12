@@ -45,7 +45,9 @@
     "test:all": "node scripts/test-all.mjs",
     "test:permissions": "playwright test --project=permissions",
     "test:sweep": "cross-env SWEEP_TEST_DATA=true playwright test --project=cleanup",
-    "test:sweep:dry": "cross-env SWEEP_TEST_DATA=true SWEEP_DRY_RUN=true playwright test --project=cleanup"
+    "test:sweep:dry": "cross-env SWEEP_TEST_DATA=true SWEEP_DRY_RUN=true playwright test --project=cleanup",
+    "instagram:login": "tsx scripts/instagram/login.ts",
+    "instagram:send": "tsx scripts/instagram/send-dm.ts"
   },
   "keywords": [],
   "author": "",

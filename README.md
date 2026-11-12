@@ -347,11 +347,13 @@ Scheduled and hand-started runs on `main` report problems as GitHub issues, and 
 watching the repository. Each kind of alert has one issue: the first alert opens it, and later ones
 comment on it until someone closes it.
 
-| Label             | When                                                                   |
-| ----------------- | ---------------------------------------------------------------------- |
-| `ci-alert-failed` | The run failed or was cancelled.                                       |
-| `ci-alert-flaky`  | The run passed, but tests needed a retry. The comments show how often. |
-| `ci-alert-missed` | No run started by 09:00 Nepal time, e.g. the 06:30 job was turned off. |
+| Label                        | When                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `ci-alert-failed`            | The run failed or was cancelled.                                       |
+| `ci-alert-flaky`             | The run passed, but tests needed a retry. The comments show how often. |
+| `ci-alert-missed`            | No run started by 09:00 Nepal time, e.g. the 06:30 job was turned off. |
+| `ci-alert-instagram-session` | Instagram ended the sender's session. See "Daily Instagram message".   |
+| `ci-alert-instagram-send`    | The daily Instagram message failed for another reason.                 |
 
 The repository is public, so alerts hold only a link and a count. To check that alerts reach you, open
 **Actions > Daily Run Watchdog > Run workflow** and tick `test_alert`.
@@ -359,6 +361,39 @@ The repository is public, so alerts hold only a link and a count. To check that 
 cron-job.org starts the watchdog at 09:00 Nepal time, as it does the daily run, because GitHub's own
 timer ran hours late or not at all. Both jobs use the same token, so if it expires neither can start
 and no issue opens. Keep cron-job.org's failure emails on for both jobs: they are the alert for that.
+
+### Daily Instagram message
+
+The inbox tests in `tests/inbox/instagram` need a real inbound Instagram message. A throwaway
+Instagram account (the "sender") sends one every morning to the Instagram account connected to the
+test workspace (the "receiver", a Professional account). The tests then find it in the inbox, reply
+from Replyn and wait until Instagram reports the reply delivered. Instagram only allows replies within
+24 hours of the person's last message, so the tests use the newest `AUTOTEST` message from the last 24
+hours. If there is none, they fail and point here.
+
+| What                               | Where                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| Log in as the sender, save session | `npm run instagram:login` (visible browser, answer any code prompt)      |
+| Send today's message by hand       | `npm run instagram:send -- --headed`                                     |
+| The daily send                     | `.github/workflows/instagram-sender.yml`, started by cron-job.org        |
+| The session                        | `secrets/instagram-sender.json` (git-ignored), `IG_SENDER_SESSION` on CI |
+
+Locally `.env` holds `IG_SENDER_USERNAME`, `IG_SENDER_PASSWORD` and `IG_RECEIVER_HANDLE`. CI needs
+only two repository secrets: `IG_SENDER_SESSION` (the contents of
+`secrets/instagram-sender.json.base64.txt`, written by `instagram:login`) and `IG_RECEIVER_HANDLE`. The
+password never leaves your machine.
+
+cron-job.org starts **Instagram Sender** at 06:15 Nepal time, before the 06:30 daily run, the same way
+as the daily run (POST to `.../actions/workflows/instagram-sender.yml/dispatches` with `{"ref":"main"}`).
+There is deliberately no GitHub schedule as a backup: a late duplicate would send a second message.
+
+**When Instagram ends the session** (every few weeks, or after a "suspicious login" check), the run
+fails and opens a `ci-alert-instagram-session` issue. Run `npm run instagram:login`, paste the new
+base64 file into the `IG_SENDER_SESSION` secret, re-run the workflow and close the issue.
+
+Automating a personal Instagram account is against Instagram's terms, so the sender must stay a
+throwaway account that sends one message a day. If it gets banned, create a new one, message the
+receiver once by hand, update `.env` and log in again. Never automate the receiver.
 
 ### Known bugs
 
