@@ -41,6 +41,7 @@ export type WorkflowExecution = {
   currentStepId: string | null;
   totalSteps: number;
   completedSteps: number;
+  createdAt?: string;
 };
 
 /** The list's filters, as the Workflows page sends them. */
@@ -96,6 +97,60 @@ export function toWorkflowPayload(workflow: WorkflowData, { actionStep = true } 
     steps: actionStep ? [trigger, exit] : [trigger],
   };
 }
+
+/** A trigger that reacts to something happening, e.g. a tag being added, with its filter. */
+export type EventTrigger = {
+  nodeType: 'tag_added' | 'conversation_closed' | 'conversation_opened';
+  label: string;
+  /** The trigger's filter, e.g. `{ tagIds: [...] }`, `{ topicIds: [...] }` or `{ source: ['contact'] }`. */
+  conditions: Record<string, unknown>;
+};
+
+/** One action, e.g. `{ nodeType: 'add_note', label: 'Add Note', config: { note: '...' } }`. */
+export type WorkflowAction = { nodeType: string; label: string; config: Record<string, unknown> };
+
+/**
+ * A workflow that starts by itself when `trigger` happens and runs one action. Keep the trigger's
+ * filter narrow (a test-only tag or closing note category), so it only ever fires for the test's
+ * own changes, never for other tests or real contacts.
+ */
+export function toEventWorkflowPayload(
+  workflow: WorkflowData,
+  trigger: EventTrigger,
+  action: WorkflowAction,
+): WorkflowPayload {
+  return {
+    name: workflow.name,
+    description: workflow.description,
+    isActive: false,
+    triggerStrategy: { type: trigger.nodeType, conditions: trigger.conditions },
+    steps: [
+      {
+        id: 'trigger',
+        type: 'trigger',
+        nodeType: trigger.nodeType,
+        label: trigger.label,
+        config: trigger.conditions,
+        position: { x: 300, y: 0 },
+        next: ['action'],
+      },
+      { id: 'action', type: 'action', ...action, position: { x: 300, y: 170 }, next: [] },
+    ],
+  };
+}
+
+/**
+ * The one workflow the tests keep switched on all the time: when a customer's message opens a
+ * conversation, it adds a note. The inbox teardown closes the Instagram test conversation after each
+ * run, so the next morning's message opens it again and this workflow runs: tests/inbox/workflows
+ * then checks it did. Its name has no "qa" marker, so the clean-up job leaves it alone.
+ */
+export const INBOUND_MESSAGE_WORKFLOW = {
+  name: 'Replyn QA: note when a customer opens a conversation',
+  description:
+    'Used by the automated tests (tests/inbox/workflows). Adds a note when a customer message opens a conversation. Do not delete.',
+  note: 'A customer message opened this conversation (Replyn QA workflow).',
+};
 
 /**
  * Workflows (the list page; the canvas editor is tested by hand).
@@ -200,6 +255,35 @@ export class WorkflowsApi extends ResourceApi<WorkflowPayload, WorkflowRecord> {
       await this.delete(old.id);
     }
     return super.createRecord(payload);
+  }
+
+  /**
+   * Make sure INBOUND_MESSAGE_WORKFLOW exists and is switched on; create it the first time.
+   * @returns its id
+   */
+  async ensureInboundMessageWorkflow(): Promise<string> {
+    const { name, description, note } = INBOUND_MESSAGE_WORKFLOW;
+    const existing = (await this.listFilteredRecords({ search: name })).find((w) => w.name === name);
+    let id = existing?.id;
+    if (!id) {
+      const payload = toEventWorkflowPayload(
+        { name, description },
+        {
+          nodeType: 'conversation_opened',
+          label: 'Conversation Opened',
+          conditions: { source: ['contact'] },
+        },
+        { nodeType: 'add_note', label: 'Add Note', config: { note } },
+      );
+      const created = await this.create(payload);
+      if (created.status() !== 201) throw new Error(`Could not create "${name}": ${await created.text()}`);
+      id = (await created.json()).data.id as string;
+    }
+    if (!existing?.isActive) {
+      const activated = await this.activate(id);
+      if (!activated.ok()) throw new Error(`Could not switch on "${name}": ${await activated.text()}`);
+    }
+    return id;
   }
 
   private async result<T>(path: string): Promise<T[]> {

@@ -7,6 +7,11 @@ import { test, expect } from '../../../fixtures/test';
  * The reply really reaches the sender's throwaway Instagram account.
  */
 test.describe('Instagram inbound messages', { tag: ['@inbox', '@instagram'] }, () => {
+  // The inbox teardown leaves the conversation closed for the next morning's message; reopen it.
+  test.beforeEach(async ({ inboxApi, testConversation }) => {
+    await inboxApi.ensureOpen(testConversation.contactId);
+  });
+
   test('should show the daily Instagram message and deliver a reply', async ({
     conversationPage,
     inboxApi,

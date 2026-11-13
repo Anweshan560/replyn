@@ -58,7 +58,6 @@ of the same names on CI). Without it those tests are skipped.
 | Workflows list: tabs, Live switch, duplicate, archive      | `npm run test:workflows`                                          |
 | Sidebar widgets: notifications, AI credits, account menu   | `npm run test:sidebar`                                            |
 | Permissions: what the Agent role may and may not do        | `npm run test:permissions`                                        |
-| Accessibility checks (axe)                                 | `npm run test:a11y`                                               |
 | Smoke tests on Firefox, WebKit and phones                  | `npm run test:browsers`                                           |
 | Screenshot comparison (references are taken on Linux)      | `npm run test:visual`                                             |
 | Clean up old test data / only list what it would delete    | `npm run test:sweep` / `npm run test:sweep:dry`                   |
@@ -421,18 +420,6 @@ base64 file into the `IG_SENDER_SESSION` secret, re-run the workflow and close t
 Automating a personal Instagram account is against Instagram's terms, so the sender must stay a
 throwaway account that sends one message a day. If it gets banned, create a new one, message the
 receiver once by hand, update `.env` and log in again. Never automate the receiver.
-
-### Accessibility checks
-
-`tests/accessibility` scans the login page, Home, Inbox, Contacts, Appointments, Broadcasts, Workflows,
-Reports and Settings → Tags with [axe](https://github.com/dequelabs/axe-core) (WCAG 2.1 A and AA).
-They run in every normal run (`ui` project), or alone with `npm run test:a11y`.
-
-Every page already breaks some rules (low colour contrast, controls nested in controls, zoom turned
-off, icon buttons without a name…). Those are listed per page in `tests/accessibility/a11y-baseline.json`,
-and a test fails only when a page breaks a rule that is **not** listed. The full axe result is attached
-to each test in the report. When a page stops breaking a listed rule, the test adds an "accessibility
-improved" note: remove that rule from the baseline, so it cannot come back unnoticed.
 
 ### Browsers and screenshots
 

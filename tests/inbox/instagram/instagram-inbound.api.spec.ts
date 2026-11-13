@@ -10,6 +10,11 @@ import { DAILY_MESSAGE_PREFIX } from '../../../api/InboxApi';
  * a throwaway test account, and it only ever gets these replies.
  */
 test.describe('Instagram inbound messages API', { tag: ['@inbox', '@instagram'] }, () => {
+  // The inbox teardown leaves the conversation closed for the next morning's message; reopen it.
+  test.beforeEach(async ({ inboxApi, testConversation }) => {
+    await inboxApi.ensureOpen(testConversation.contactId);
+  });
+
   test('should have received the daily Instagram message', async ({ inboxApi }) => {
     const { message } = await test.step('find the newest daily message from the last 24 hours', () =>
       inboxApi.getDailyMessage());
