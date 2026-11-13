@@ -229,7 +229,16 @@ export default defineConfig({
       ...tagFilter(),
       dependencies: ['setup', 'agent-setup', 'inbox-setup'],
       workers: 1,
-      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_FILE,
+        // A fake microphone (a test tone), already allowed, for the voice message test.
+        permissions: ['notifications', 'microphone'],
+        launchOptions: {
+          slowMo: isHeadless ? 0 : 300,
+          args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+        },
+      },
     },
     // What the Agent role may and may not do (UI and API), logged in as the Agent.
     {
