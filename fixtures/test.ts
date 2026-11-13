@@ -163,6 +163,8 @@ type Fixtures = {
 /** A second person, logged in as the Agent: their own page, inbox API and user id. */
 export type AgentSession = {
   page: Page;
+  /** The Agent's API headers, for any API class, e.g. `new TicketsApi(request, agent.headers)`. */
+  headers: HeadersProvider;
   inboxApi: InboxApi;
   conversationPage: ConversationPage;
   /** The Agent's user id, e.g. for `mentioned` in a note. */
@@ -532,6 +534,7 @@ export const test = base.extend<Fixtures>({
     const inboxApi = new InboxApi(request, headers);
     await use({
       page,
+      headers,
       inboxApi,
       conversationPage: new ConversationPage(page, workspaceId),
       ...(await inboxApi.currentUser()),

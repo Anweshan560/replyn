@@ -3,7 +3,8 @@ import { test, expect } from '../../fixtures/test';
 import { env, getAgentCredentials } from '../../config/env';
 import { ENDPOINTS, type HeadersProvider } from '../../api/ResourceApi';
 import { toSnippetPayload } from '../../api/SettingsApis';
-import { buildSnippet } from '../../utils/testData';
+import { toCustomViewPayload } from '../../api/CustomViewsApi';
+import { buildSavedView, buildSnippet } from '../../utils/testData';
 import { knownBug } from '../../utils/knownBug';
 
 // These tests run logged in as the limited test account (role "Agent"), see tests/setup/agent.setup.ts.
@@ -190,5 +191,88 @@ test.describe('Permissions: Agent on the API', { tag: ['@permissions'] }, () => 
         send({ request, apiHeaders }, method, path));
       expect(response.status(), `${method} ${path}`).toBe(403);
     }
+  });
+
+  test('should not let an Agent delete conversations, appointments or orders, or export contacts', async ({
+    request,
+    apiHeaders,
+  }) => {
+    // Unticked for the Agent: Conversations → Delete, Appointments → Delete, Orders → Delete,
+    // Contacts → Export.
+    for (const [method, path] of [
+      ['DELETE', `${ENDPOINTS.conversations}/${UNKNOWN_ID}`],
+      ['DELETE', `${ENDPOINTS.appointments}/${UNKNOWN_ID}`],
+      ['DELETE', `${ENDPOINTS.orders}/${UNKNOWN_ID}`],
+      ['POST', ENDPOINTS.segmentExports],
+    ] as const) {
+      const response = await test.step(`${method} ${path}`, () =>
+        send({ request, apiHeaders }, method, path));
+      expect(response.status(), `${method} ${path}`).toBe(403);
+    }
+  });
+
+  test('should not let an Agent list, read, add, change, comment on or delete tickets', async ({
+    request,
+    apiHeaders,
+  }) => {
+    // The Agent role has no Tickets permission at all.
+    for (const [method, path] of [
+      ['GET', ENDPOINTS.tickets],
+      ['GET', `${ENDPOINTS.tickets}/${UNKNOWN_ID}`],
+      ['POST', ENDPOINTS.tickets],
+      ['PATCH', `${ENDPOINTS.tickets}/${UNKNOWN_ID}`],
+      ['POST', `${ENDPOINTS.tickets}/${UNKNOWN_ID}/comments`],
+      ['DELETE', `${ENDPOINTS.tickets}/${UNKNOWN_ID}`],
+    ] as const) {
+      const response = await test.step(`${method} ${path}`, () =>
+        send({ request, apiHeaders }, method, path));
+      expect(response.status(), `${method} ${path}`).toBe(403);
+    }
+  });
+
+  test('should let an Agent add, rename and delete a view only they see (views.create)', async ({
+    customViewsApi,
+    cleanup,
+  }) => {
+    const view = { ...buildSavedView(), share: 'Just me' as const };
+
+    const created = await test.step('POST a "Just me" view: responds 201', async () => {
+      const response = await customViewsApi.create(toCustomViewPayload(view));
+      const body = await response.json();
+      if (body.data?.id) cleanup.add(`view ${view.name}`, () => customViewsApi.deleteIfExists(body.data.id));
+      expect(response.status()).toBe(201);
+      return body.data;
+    });
+    await test.step('rename it: responds 200', async () => {
+      expect((await customViewsApi.update(created.id, { name: buildSavedView().name })).status()).toBe(200);
+    });
+    await test.step('delete it: responds 200', async () => {
+      expect((await customViewsApi.delete(created.id)).status()).toBe(200);
+    });
+  });
+
+  test('should not let an Agent share a view with everyone (no views.share)', async ({
+    customViewsApi,
+    cleanup,
+  }) => {
+    const refusal = 'Your role can only make views for yourself';
+
+    await test.step('POST an "Everyone" view: responds 403', async () => {
+      const view = { ...buildSavedView(), share: 'Everyone' as const };
+      const response = await customViewsApi.create(toCustomViewPayload(view));
+      const body = await response.json();
+      if (body.data?.id) cleanup.add(`view ${view.name}`, () => customViewsApi.deleteIfExists(body.data.id));
+      expect(response.status()).toBe(403);
+      expect(body.message).toBe(refusal);
+    });
+    await test.step('share their own "Just me" view: responds 403', async () => {
+      const view = await customViewsApi.createRecord(
+        toCustomViewPayload({ ...buildSavedView(), share: 'Just me' }),
+      );
+      cleanup.add(`view ${view.name}`, () => customViewsApi.deleteIfExists(view.id));
+      const response = await customViewsApi.update(view.id, { visibility: 'workspace' });
+      expect(response.status()).toBe(403);
+      expect((await response.json()).message).toBe(refusal);
+    });
   });
 });

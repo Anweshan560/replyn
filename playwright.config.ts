@@ -189,7 +189,8 @@ export default defineConfig({
       testMatch: API_TESTS,
       ...tagFilter(),
       testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS],
-      dependencies: ['setup'],
+      // agent-setup: some API tests also act as the Agent (the `agent` fixture).
+      dependencies: ['setup', 'agent-setup'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: AUTH_FILE,

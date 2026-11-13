@@ -3,7 +3,7 @@ import { getAgentCredentials } from '../../config/env';
 import { AccessPage } from '../../pages/permissions/AccessPage';
 
 // These tests run logged in as the limited test account (role "Agent"), see tests/setup/agent.setup.ts.
-// They only open pages and read; nothing is changed.
+// They only open pages and read; nothing is changed (the New view dialog is opened but never saved).
 test.describe('Permissions: Agent in the browser', { tag: ['@permissions'] }, () => {
   test.skip(!getAgentCredentials(), 'TEST_AGENT_USERNAME and TEST_AGENT_PASSWORD are not set');
 
@@ -29,6 +29,7 @@ test.describe('Permissions: Agent in the browser', { tag: ['@permissions'] }, ()
   for (const { name, path, permission } of [
     { name: 'Reports', path: '/reports', permission: 'Can open reports' },
     { name: 'Clinic → Billing', path: '/clinics/billing', permission: 'Can view the billing ledger' },
+    { name: 'Tickets', path: '/tickets', permission: 'Can view tickets' },
     { name: 'Settings → Roles', path: '/settings/roles', permission: 'Can manage roles' },
     {
       name: 'Settings → API keys and webhooks',
@@ -47,6 +48,18 @@ test.describe('Permissions: Agent in the browser', { tag: ['@permissions'] }, ()
       });
     });
   }
+
+  test('should offer an Agent no Share choice in the New view dialog', async ({ savedViewsPage }) => {
+    // Views → Create is ticked for the Agent, Share is not: their views are "Just me" only.
+    await savedViewsPage.open();
+    await test.step('open New view', () => savedViewsPage.openCreateDialog());
+
+    await test.step('neither "Just me" nor "Everyone" is offered', async () => {
+      await expect(savedViewsPage.createDialog.getByRole('button', { name: 'Create view' })).toBeVisible();
+      await expect(savedViewsPage.createDialog.getByRole('radio')).toHaveCount(0);
+      await expect(savedViewsPage.createDialog.getByText('Everyone', { exact: true })).toHaveCount(0);
+    });
+  });
 
   test('should send an Agent who opens Organization settings back to Home', async ({ page }) => {
     const access = new AccessPage(page);
