@@ -37,6 +37,14 @@ const PERMISSION_TESTS = /permissions[\\/].*\.spec\.ts/;
 const hasAgentAccount = !!getAgentCredentials();
 
 /**
+ * Inbox tests that work on the one real Instagram conversation (from the daily message job, see
+ * README, "Daily Instagram message"): replies, assigning, closing, snoozing, notes. They would undo
+ * each other's changes in parallel, so they have a project of their own and run one at a time
+ * (UI and API). Some also log in as the Agent, for mentions and live updates.
+ */
+const INBOX_CONVERSATION_TESTS = /inbox[\\/](conversation|instagram)[\\/].*\.spec\.ts/;
+
+/**
  * Quarantine: a flaky test tagged @quarantine (with a comment saying why and since when) is left out
  * of every normal run, so it cannot turn the daily run red, and runs on its own with
  * `npm run test:quarantine` (QUARANTINE_TESTS=true). On CI that run comes after the regression and
@@ -44,6 +52,22 @@ const hasAgentAccount = !!getAgentCredentials();
  */
 const QUARANTINE = /@quarantine/;
 const quarantineRun = process.env.QUARANTINE_TESTS === 'true';
+
+/**
+ * The smoke tests on other browsers and on phones, and the screenshot comparisons, only when asked
+ * for: `npm run test:browsers` (CROSS_BROWSER=true) and `npm run test:visual` (VISUAL=true). Normal
+ * runs leave them out, so they need only Chromium. They run weekly on CI (Linux), where the
+ * reference screenshots are taken. See README, "Browsers and screenshots".
+ */
+const CROSS_BROWSERS = {
+  firefox: devices['Desktop Firefox'],
+  webkit: devices['Desktop Safari'],
+  'mobile-chrome': devices['Pixel 7'],
+  'mobile-safari': devices['iPhone 15'],
+};
+const crossBrowserRun = process.env.CROSS_BROWSER === 'true';
+const visualRun = process.env.VISUAL === 'true';
+const VISUAL_TESTS = /visual[\\/].*\.spec\.ts/;
 
 /** A project's tag filter: its own grep/grepInvert, plus leaving out (or only running) quarantine. */
 function tagFilter(grep?: RegExp, grepInvert?: RegExp): { grep?: RegExp; grepInvert?: RegExp[] } {
@@ -113,15 +137,49 @@ export default defineConfig({
     {
       name: 'smoke',
       ...tagFilter(/@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
+      testIgnore: [
+        API_TESTS,
+        EXCLUSIVE_TESTS,
+        WORKSPACE_SETTINGS_TESTS,
+        PERMISSION_TESTS,
+        INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
+      ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
+    ...(crossBrowserRun
+      ? Object.entries(CROSS_BROWSERS).map(([name, device]) => ({
+          name,
+          ...tagFilter(/@smoke/),
+          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, VISUAL_TESTS],
+          dependencies: ['setup'],
+          use: { ...device, storageState: AUTH_FILE },
+        }))
+      : []),
+    // Screenshot comparisons against reference images in tests/visual/*-snapshots (taken on Linux).
+    ...(visualRun
+      ? [
+          {
+            name: 'visual',
+            testMatch: VISUAL_TESTS,
+            dependencies: ['setup'],
+            use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+          },
+        ]
+      : []),
     // Browser tests of the user interface: every *.spec.ts that is not an API test.
     {
       name: 'ui',
       ...tagFilter(undefined, /@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
+      testIgnore: [
+        API_TESTS,
+        EXCLUSIVE_TESTS,
+        WORKSPACE_SETTINGS_TESTS,
+        PERMISSION_TESTS,
+        INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
+      ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -130,7 +188,7 @@ export default defineConfig({
       name: 'api',
       testMatch: API_TESTS,
       ...tagFilter(),
-      testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS],
+      testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS],
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
@@ -145,6 +203,15 @@ export default defineConfig({
       testMatch: WORKSPACE_SETTINGS_TESTS,
       ...tagFilter(),
       dependencies: ['setup'],
+      workers: 1,
+      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
+    },
+    // The shared Instagram conversation (UI and API): one test at a time, next to the parallel projects.
+    {
+      name: 'inbox',
+      testMatch: INBOX_CONVERSATION_TESTS,
+      ...tagFilter(),
+      dependencies: ['setup', 'agent-setup'],
       workers: 1,
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },

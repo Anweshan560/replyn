@@ -33,6 +33,8 @@ export const ENDPOINTS = {
   customViews: '/v1/custom-views',
   /** DELETE archives a workflow; `/<id>/activate`, `/deactivate`, `/restore`, `/analytics`. */
   workflows: '/v1/workflows',
+  /** Inbox conversations: POST `/search` lists them. Messages are read from a contact's `/events`. */
+  conversations: '/v1/conversations',
   broadcasts: '/v1/broadcasts',
   /** A ticket's comments and tags are at `/<id>/comments` and `/<id>/tags`. */
   tickets: '/v1/tickets',

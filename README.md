@@ -46,7 +46,7 @@ of the same names on CI). Without it those tests are skipped.
 | Settings → Contact Fields / Outcome Reasons                | `npm run test:contact-fields` / `npm run test:outcome-reasons`    |
 | Settings → Wrap-Up (one test at a time)                    | `npm run test:wrap-up`                                            |
 | Settings → API Keys and Webhooks                           | `npm run test:api-keys`                                           |
-| Inbox → saved Views                                        | `npm run test:inbox`                                              |
+| Inbox: saved Views, conversation actions, Instagram        | `npm run test:inbox`                                              |
 | Reports: every report loads, and the API                   | `npm run test:reports`                                            |
 | Report and dashboard numbers with seeded data (exclusive)  | `npm run test:report-numbers`                                     |
 | All exclusive tests (run on their own)                     | `npm run test:exclusive`                                          |
@@ -59,6 +59,9 @@ of the same names on CI). Without it those tests are skipped.
 | Tickets: board, create, status, comments, delete           | `npm run test:tickets`                                            |
 | Sidebar widgets: notifications, AI credits, account menu   | `npm run test:sidebar`                                            |
 | Permissions: what the Agent role may and may not do        | `npm run test:permissions`                                        |
+| Accessibility checks (axe)                                 | `npm run test:a11y`                                               |
+| Smoke tests on Firefox, WebKit and phones                  | `npm run test:browsers`                                           |
+| Screenshot comparison (references are taken on Linux)      | `npm run test:visual`                                             |
 | Clean up old test data / only list what it would delete    | `npm run test:sweep` / `npm run test:sweep:dry`                   |
 | One file                                                   | `npx playwright test tests/clinic/doctors/doctors.spec.ts`        |
 | One test, by name                                          | `npx playwright test -g "when user deletes it"`                   |
@@ -85,6 +88,15 @@ changing it at once would overwrite each other. Its tests have their own `worksp
 (one worker), which runs alongside the parallel tests in every normal run, and each test puts the
 wrap-up back as it found it.
 
+**Why the inbox conversation tests run one at a time:** `tests/inbox/conversation` and
+`tests/inbox/instagram` all work on the one real Instagram conversation (see "Daily Instagram
+message"). They have their own `inbox` project (one worker, UI and API), which runs alongside the
+parallel tests in every normal run but not in the quick check. The `testConversation` fixture saves the
+conversation's state (status, assignee, lifecycle, tags, follow-up) before each test and puts it back
+afterwards. Notes cannot be deleted, so test notes stay on the conversation, marked `qa` + 6 digits.
+Tests that need a second person (mentions, live updates) use the `agent` fixture: the Agent account in
+a browser of its own, skipped without `TEST_AGENT_USERNAME` / `TEST_AGENT_PASSWORD`.
+
 Every run starts with `tests/setup/auth.setup.ts`, which logs in once and saves the session for the other tests.
 The permission tests (`tests/permissions`) start from `tests/setup/agent.setup.ts` instead, logged in as the
 Agent. Writes the Agent may not make are sent with an empty body: the API checks the permission first, so
@@ -100,26 +112,26 @@ marker and is not swept.
 
 ## Folder structure
 
-| Folder                    | What's in it                                                                                              |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `tests/auth/`             | Login: UI (`login.spec.ts`) and API (`login.api.spec.ts`).                                                |
-| `tests/clinic/<feature>/` | Doctors, Treatments, Departments, Appointments, Billing: UI and API tests side by side.                   |
-| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, Wrap-Up, API Keys, …).              |
-| `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                  |
-| `tests/inbox/<feature>/`  | Inbox → saved Views: UI and API tests side by side.                                                       |
-| `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive). |
-| `tests/broadcasts/`       | Broadcasts: list, search, status filter, New broadcast form up to validation. Never creates or sends one. |
-| `tests/workflows/`        | Workflows list: tiles, tabs, trigger filter, Live switch, duplicate, archive/restore (canvas is manual).  |
-| `tests/sidebar/`          | Sidebar widgets: notification bell and panel, AI credits, account menu, search, links. Read only.         |
-| `tests/setup/`            | Logs in once before the other tests and saves the session.                                                |
-| `pages/`                  | Page objects (`auth/`, `clinic/`, `settings/`, `contacts/`, `inbox/`): _how_ to use each page.            |
-| `api/`                    | API clients: one small class per endpoint group, plus the field-name mapping to the UI forms.             |
-| `fixtures/`               | The `test` that every spec imports, ready-made with page objects, API clients and cleanup.                |
-| `config/`                 | `env.ts`: the only place that reads `.env` (URLs, credentials, limits).                                   |
-| `utils/`                  | Helpers: Faker test data, network recording/mocking, response timing.                                     |
-| `reporters/`              | Writes a screenshot and plain-text summary of every failed test to `test-results/failures/`.              |
-| `scripts/`                | `test-all.mjs`: runs the suite, then the exclusive tests on their own.                                    |
-| `.github/`                | CI: smoke test, then the full suite, then the exclusive tests, on every push and PR.                      |
+| Folder                    | What's in it                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `tests/auth/`             | Login: UI (`login.spec.ts`) and API (`login.api.spec.ts`).                                                 |
+| `tests/clinic/<feature>/` | Doctors, Treatments, Departments, Appointments, Billing: UI and API tests side by side.                    |
+| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, Wrap-Up, API Keys, …).               |
+| `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                   |
+| `tests/inbox/<feature>/`  | Inbox: saved Views, conversation actions (`conversation/`) and the daily Instagram message (`instagram/`). |
+| `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive).  |
+| `tests/broadcasts/`       | Broadcasts: list, search, status filter, New broadcast form up to validation. Never creates or sends one.  |
+| `tests/workflows/`        | Workflows list: tiles, tabs, trigger filter, Live switch, duplicate, archive/restore (canvas is manual).   |
+| `tests/sidebar/`          | Sidebar widgets: notification bell and panel, AI credits, account menu, search, links. Read only.          |
+| `tests/setup/`            | Logs in once before the other tests and saves the session.                                                 |
+| `pages/`                  | Page objects (`auth/`, `clinic/`, `settings/`, `contacts/`, `inbox/`): _how_ to use each page.             |
+| `api/`                    | API clients: one small class per endpoint group, plus the field-name mapping to the UI forms.              |
+| `fixtures/`               | The `test` that every spec imports, ready-made with page objects, API clients and cleanup.                 |
+| `config/`                 | `env.ts`: the only place that reads `.env` (URLs, credentials, limits).                                    |
+| `utils/`                  | Helpers: Faker test data, network recording/mocking, response timing.                                      |
+| `reporters/`              | Writes a screenshot and plain-text summary of every failed test to `test-results/failures/`.               |
+| `scripts/`                | `test-all.mjs`: runs the suite, then the exclusive tests on their own.                                     |
+| `.github/`                | CI: smoke test, then the full suite, then the exclusive tests, on every push and PR.                       |
 
 File names decide how a test runs: `*.api.spec.ts` runs in the `api` project, other `*.spec.ts` files in `ui`.
 
@@ -348,11 +360,14 @@ Scheduled and hand-started runs on `main` report problems as GitHub issues, and 
 watching the repository. Each kind of alert has one issue: the first alert opens it, and later ones
 comment on it until someone closes it.
 
-| Label             | When                                                                   |
-| ----------------- | ---------------------------------------------------------------------- |
-| `ci-alert-failed` | The run failed or was cancelled.                                       |
-| `ci-alert-flaky`  | The run passed, but tests needed a retry. The comments show how often. |
-| `ci-alert-missed` | No run started by 09:00 Nepal time, e.g. the 06:30 job was turned off. |
+| Label                        | When                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `ci-alert-failed`            | The run failed or was cancelled.                                       |
+| `ci-alert-flaky`             | The run passed, but tests needed a retry. The comments show how often. |
+| `ci-alert-missed`            | No run started by 09:00 Nepal time, e.g. the 06:30 job was turned off. |
+| `ci-alert-instagram-session` | Instagram ended the sender's session. See "Daily Instagram message".   |
+| `ci-alert-instagram-send`    | The daily Instagram message failed for another reason.                 |
+| `ci-alert-browsers`          | The weekly browser or screenshot check failed.                         |
 
 The repository is public, so alerts hold only a link and a count. To check that alerts reach you, open
 **Actions > Daily Run Watchdog > Run workflow** and tick `test_alert`.
@@ -360,6 +375,85 @@ The repository is public, so alerts hold only a link and a count. To check that 
 cron-job.org starts the watchdog at 09:00 Nepal time, as it does the daily run, because GitHub's own
 timer ran hours late or not at all. Both jobs use the same token, so if it expires neither can start
 and no issue opens. Keep cron-job.org's failure emails on for both jobs: they are the alert for that.
+The token was created on 2026-11-04 and lasts a year: **renew it before 2027-11-04** (GitHub →
+Settings → Developer settings → fine-grained tokens), then paste the new one into every cron-job.org job.
+
+The run page's summary shows the totals, a table per project (ui, api, inbox, …), every failed and
+flaky test with its first error line, known bugs that now pass, and the 5 slowest tests.
+
+### Daily Instagram message
+
+The inbox tests in `tests/inbox/instagram` and `tests/inbox/conversation` need a real Instagram conversation. A throwaway
+Instagram account (the "sender") sends one every morning to the Instagram account connected to the
+test workspace (the "receiver", a Professional account). The tests then find it in the inbox, reply
+from Replyn and wait until Instagram reports the reply delivered. Instagram only allows replies within
+24 hours of the person's last message, so the tests use the newest `AUTOTEST` message from the last 24
+hours. If there is none, they fail and point here. The conversation tests (assign, close, snooze,
+notes…) send nothing to Instagram, so they only need the conversation to exist.
+
+What is sent to the sender's Instagram on each run: the UI and API reply tests (2 texts) and the image
+test (1 image). Images must be a normal size: Instagram refuses tiny ones (the 70-byte
+`tests/assets/sample.png` fails with error 100), so the test sends `tests/assets/inbox-image.jpg`.
+
+| What                               | Where                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| Log in as the sender, save session | `npm run instagram:login` (visible browser, answer any code prompt)      |
+| Send today's message by hand       | `npm run instagram:send -- --headed`                                     |
+| Only check the session is valid    | `npm run instagram:send -- --check` (sends nothing)                      |
+| The daily send                     | `.github/workflows/instagram-sender.yml`, started by cron-job.org        |
+| The session                        | `secrets/instagram-sender.json` (git-ignored), `IG_SENDER_SESSION` on CI |
+
+Locally `.env` holds `IG_SENDER_USERNAME`, `IG_SENDER_PASSWORD` and `IG_RECEIVER_HANDLE`. CI needs
+only two repository secrets: `IG_SENDER_SESSION` (the contents of
+`secrets/instagram-sender.json.base64.txt`, written by `instagram:login`) and `IG_RECEIVER_HANDLE`. The
+password never leaves your machine.
+
+cron-job.org starts **Instagram Sender** at 06:15 Nepal time, before the 06:30 daily run, the same way
+as the daily run (POST to `.../actions/workflows/instagram-sender.yml/dispatches` with `{"ref":"main"}`).
+There is deliberately no GitHub schedule as a backup: a late duplicate would send a second message.
+
+Every Monday GitHub's own timer also runs the workflow in check mode (it sends nothing), so an expired
+session is found before a morning's message is lost. Tick `check_only` to run that check by hand.
+
+**When Instagram ends the session** (every few weeks, or after a "suspicious login" check), the run
+fails and opens a `ci-alert-instagram-session` issue. Run `npm run instagram:login`, paste the new
+base64 file into the `IG_SENDER_SESSION` secret, re-run the workflow and close the issue.
+
+Automating a personal Instagram account is against Instagram's terms, so the sender must stay a
+throwaway account that sends one message a day. If it gets banned, create a new one, message the
+receiver once by hand, update `.env` and log in again. Never automate the receiver.
+
+### Accessibility checks
+
+`tests/accessibility` scans the login page, Home, Inbox, Contacts, Appointments, Broadcasts, Workflows,
+Reports and Settings → Tags with [axe](https://github.com/dequelabs/axe-core) (WCAG 2.1 A and AA).
+They run in every normal run (`ui` project), or alone with `npm run test:a11y`.
+
+Every page already breaks some rules (low colour contrast, controls nested in controls, zoom turned
+off, icon buttons without a name…). Those are listed per page in `tests/accessibility/a11y-baseline.json`,
+and a test fails only when a page breaks a rule that is **not** listed. The full axe result is attached
+to each test in the report. When a page stops breaking a listed rule, the test adds an "accessibility
+improved" note: remove that rule from the baseline, so it cannot come back unnoticed.
+
+### Browsers and screenshots
+
+Every Sunday, **Weekly Browsers and Screenshots** (`.github/workflows/weekly-browsers.yml`) runs on
+Linux:
+
+| What                                                      | Locally                 |
+| --------------------------------------------------------- | ----------------------- |
+| The smoke tests on Firefox, WebKit, Pixel 7 and iPhone    | `npm run test:browsers` |
+| Screenshot comparison: login page, sidebar, Settings menu | `npm run test:visual`   |
+
+Both are left out of normal runs. The reference screenshots are in
+`tests/visual/visual.spec.ts-snapshots/` and are taken on Linux, because fonts render differently on
+each system (images made on Windows or macOS are git-ignored). Changing parts (trial days, unread
+counts) are masked, and more than 1% of different pixels fails.
+
+**To take new references** (the first time, and after an intended design change): **Actions > Weekly
+Browsers and Screenshots > Run workflow**, tick `update_screenshots`. The images are uploaded as the
+`visual-references` artifact, and the run opens a pull request with them if **Settings > Actions >
+General > Allow GitHub Actions to create and approve pull requests** is on. Check each image, then merge.
 
 ### Known bugs
 
