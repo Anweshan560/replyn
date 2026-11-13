@@ -38,6 +38,11 @@ export const ENDPOINTS = {
   broadcasts: '/v1/broadcasts',
   /** A ticket's comments and tags are at `/<id>/comments` and `/<id>/tags`. */
   tickets: '/v1/tickets',
+  orders: '/v1/orders',
+  /** Contacts → Export: an export of a segment's contacts. */
+  segmentExports: '/v1/segment-exports',
+  /** A patient's invoices: PATCH and DELETE `/<id>` correct a recorded payment. */
+  invoices: '/v1/clinics/invoices',
   channels: '/v1/channels',
   notificationsFeed: '/v1/notifications/feed',
   credits: '/v1/credits',

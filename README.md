@@ -101,6 +101,14 @@ The permission tests (`tests/permissions`) start from `tests/setup/agent.setup.t
 Agent. Writes the Agent may not make are sent with an empty body: the API checks the permission first, so
 they answer 403 and nothing is created.
 
+The Agent tests follow the built-in Agent role's defaults (Settings → Roles → Agent): all contacts visible;
+Contacts view and change; Conversations assign; Appointments view and book; Payments record (and correct
+their own until the end of that day); Orders view and edit; Saved replies; Views create (not share); no
+Tickets. Where the admin has to make something first (a shared view, someone else's payment), the test runs
+as the admin and acts as the Agent through `agent.headers`: `tests/settings/roles/agent-defaults.api.spec.ts`
+and, on the shared conversation, `tests/inbox/conversation/conversation-agent.api.spec.ts`. If someone
+changes the Agent role, these tests fail; the first test in `tests/permissions` says so.
+
 **Test data and the clean-up job:** every name the tests create carries a marker, `qa` and six digits
 (e.g. `Botox qa482913`), made by `uniqueSuffix()` in `utils/testData.ts`. Tests delete their own data, but a
 crashed or stopped run leaves some behind. `npm run test:sweep` (`tests/cleanup`) deletes it: only records
