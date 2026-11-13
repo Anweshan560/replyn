@@ -57,4 +57,27 @@ test.describe('Instagram inbound messages', { tag: ['@inbox', '@instagram'] }, (
       await inboxApi.expectDelivered(contactId, sent.id);
     });
   });
+
+  test.describe('with a microphone', () => {
+    // The "inbox" project starts Chrome with a fake microphone (a test tone) that is already allowed,
+    // so recording needs no one present (playwright.config.ts).
+
+    test('should record a voice message and deliver it', async ({ conversationPage, inboxApi }) => {
+      const { contactId } = await test.step('find the newest daily message', () =>
+        inboxApi.getDailyMessage());
+      await conversationPage.open(contactId);
+
+      const sent = await test.step('record for 3 seconds and send', () =>
+        conversationPage.sendVoiceMessage(3));
+
+      await test.step('it is stored as an audio attachment, and Instagram reports it delivered', async () => {
+        expect(sent).toMatchObject({ type: 'attachment', owner: 'user' });
+        expect(sent.attachments?.[0]).toMatchObject({
+          type: 'audio',
+          contentType: expect.stringMatching(/^audio\//),
+        });
+        await inboxApi.expectDelivered(contactId, sent.id);
+      });
+    });
+  });
 });

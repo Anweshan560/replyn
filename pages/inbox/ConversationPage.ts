@@ -306,6 +306,58 @@ export class ConversationPage {
     expect((await listed).ok(), 'the filtered list should load').toBe(true);
   }
 
+  /** Teams in the sidebar: expand the section and open the team's own list. */
+  async openTeamList(teamName: string): Promise<void> {
+    const teams = this.inboxNavigation.getByRole('button', { name: 'Teams', exact: true });
+    if ((await teams.getAttribute('aria-expanded')) !== 'true') await teams.click();
+    const listed = waitForApiResponse(this.page, 'POST', `${ENDPOINTS.conversations}/search`);
+    await this.inboxNavigation.getByRole('link', { name: teamName, exact: true }).click();
+    expect((await listed).ok(), "the team's list should load").toBe(true);
+  }
+
+  /**
+   * The team's name shown in the contact panel's "Assigned team" field. The field's own button is
+   * 0 px wide (like the Quick filters fields), so the visible value next to it is what is checked.
+   */
+  assignedTeam(teamName: string): Locator {
+    return this.conversationActions
+      .getByRole('group')
+      .filter({ has: this.page.getByRole('button', { name: `${teamName} Assigned team`, exact: true }) })
+      .getByText(teamName, { exact: true });
+  }
+
+  /** Files, quick replies and more → Saved files: search for the file and attach it. */
+  async attachSavedFile(fileName: string): Promise<void> {
+    await this.button('Files, quick replies and more').click();
+    await this.page.getByRole('menuitem', { name: /^Saved files/ }).click();
+    const picker = this.page.getByRole('dialog', { name: 'Saved files' });
+    await picker.getByRole('searchbox', { name: 'Search files' }).fill(fileName);
+    await picker.getByRole('button', { name: `Attach ${fileName}` }).click();
+    await expect(picker).toBeHidden();
+  }
+
+  /** An attachment waiting above the reply box (picked from Saved files), by its name. */
+  pendingAttachment(name: string): Locator {
+    return this.button('Remove attachment')
+      .locator('xpath=ancestor::*[.//textarea][1]')
+      .getByText(name, { exact: true });
+  }
+
+  async removeAttachment(): Promise<void> {
+    await this.button('Remove attachment').click();
+  }
+
+  /**
+   * Record a voice message for a few seconds and send it. Needs a microphone: the tests start
+   * Chrome with a fake one (--use-fake-device-for-media-stream). This really sends it to Instagram.
+   */
+  async sendVoiceMessage(seconds: number): Promise<InboxMessage> {
+    await this.button('Record a voice message').click();
+    await expect(this.button('Discard recording')).toBeVisible();
+    await this.page.waitForTimeout(seconds * 1000);
+    return this.expectSent(() => this.button('Send').click());
+  }
+
   /** More options → "Opt out of broadcasts" or "Opt back in to broadcasts". */
   async setBroadcastOptOut(optOut: boolean): Promise<void> {
     await this.button('More options').click();

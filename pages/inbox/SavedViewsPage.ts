@@ -50,19 +50,38 @@ export class SavedViewsPage {
   }
 
   /**
-   * Create a view through the New view dialog, starting from the inbox.
+   * Create a view through the New view dialog, starting from the inbox. The sidebar's "Advanced
+   * filters" opens the same dialog as "New view".
+   * @param onFilled runs once the rule is filled in, before Create view (e.g. to read "Matches …").
    * @returns the new view's id, taken from the server's answer.
    */
-  async createView(view: SavedViewData): Promise<string> {
-    await this.openCreateDialog();
+  async createView(
+    view: SavedViewData,
+    {
+      from = 'New view',
+      onFilled,
+    }: { from?: 'New view' | 'Advanced filters'; onFilled?: () => Promise<void> } = {},
+  ): Promise<string> {
+    if (from === 'Advanced filters') {
+      await this.page.getByRole('button', { name: 'Advanced filters', exact: true }).click();
+      await expect(this.createDialog).toBeVisible();
+    } else {
+      await this.openCreateDialog();
+    }
     await this.createDialog.getByRole('button', { name: 'Add rule' }).click();
     await this.fillDialog(this.createDialog, view);
+    await onFilled?.();
     const created = waitForApiResponse(this.page, 'POST', ENDPOINTS.customViews);
     await this.createDialog.getByRole('button', { name: 'Create view' }).click();
     const response = await created;
     expect(response.status(), 'the server should create the view').toBe(201);
     await expect(this.createDialog).toBeHidden();
     return (await response.json()).data.id;
+  }
+
+  /** The dialog's live count, e.g. "Matches 3 open conversations". */
+  get matchesText(): Locator {
+    return this.createDialog.getByText(/^Matches \d+ open conversations?$/);
   }
 
   async openCreateDialog(): Promise<void> {
