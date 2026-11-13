@@ -56,6 +56,7 @@ of the same names on CI). Without it those tests are skipped.
 | Contacts                                                   | `npm run test:contacts`                                           |
 | Broadcasts: list, filters, form validation (never sends)   | `npm run test:broadcasts`                                         |
 | Workflows list: tabs, Live switch, duplicate, archive      | `npm run test:workflows`                                          |
+| Tickets: board, create, status, comments, delete           | `npm run test:tickets`                                            |
 | Sidebar widgets: notifications, AI credits, account menu   | `npm run test:sidebar`                                            |
 | Permissions: what the Agent role may and may not do        | `npm run test:permissions`                                        |
 | Smoke tests on Firefox, WebKit and phones                  | `npm run test:browsers`                                           |

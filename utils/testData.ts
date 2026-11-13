@@ -770,6 +770,22 @@ export function buildWorkspaceInvitee(): { firstName: string; lastName: string; 
   };
 }
 
+export type TicketData = { name: string; description: string };
+
+/** A ticket name and description. */
+export function buildTicket(): TicketData {
+  const issue = faker.helpers.arrayElement([
+    'Refund request',
+    'Wrong invoice',
+    'Missed callback',
+    'Booking problem',
+  ]);
+  return {
+    name: `${issue} ${uniqueSuffix()}`,
+    description: `Test ticket: ${faker.lorem.sentence({ min: 4, max: 8 })}`,
+  };
+}
+
 export type WorkflowData = { name: string; description: string };
 
 /** A workflow name and description (the steps are set in api/WorkflowsApi.ts: toWorkflowPayload). */

@@ -36,6 +36,8 @@ export const ENDPOINTS = {
   /** Inbox conversations: POST `/search` lists them. Messages are read from a contact's `/events`. */
   conversations: '/v1/conversations',
   broadcasts: '/v1/broadcasts',
+  /** A ticket's comments and tags are at `/<id>/comments` and `/<id>/tags`. */
+  tickets: '/v1/tickets',
   channels: '/v1/channels',
   notificationsFeed: '/v1/notifications/feed',
   credits: '/v1/credits',
