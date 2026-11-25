@@ -15,10 +15,17 @@ export const REPORTS: ReportEntry[] = [
     path: '/reports/daily-operations',
     heading: 'Daily operations',
   },
+  // Since the 2026-11-25 redesign Leads has a group of its own; "Sources & ads" became
+  // "Lead acquisition" (its old address redirects there).
+  { group: 'Leads', title: 'Overview', path: '/reports/leads', heading: 'Leads overview' },
+  {
+    group: 'Leads',
+    title: 'Lead acquisition',
+    path: '/reports/lead-acquisition',
+    heading: 'Lead acquisition',
+  },
+  { group: 'Leads', title: 'Lost and disqualified', path: '/reports/lost', heading: 'Lost and disqualified' },
   { group: 'Contacts', title: 'Overview', path: '/reports/contacts', heading: 'Contacts' },
-  { group: 'Contacts', title: 'Leads', path: '/reports/leads', heading: 'Leads' },
-  { group: 'Contacts', title: 'Lost & objections', path: '/reports/lost', heading: 'Lost & objections' },
-  { group: 'Contacts', title: 'Sources & ads', path: '/reports/sources', heading: 'Sources & ads' },
   { group: 'Contacts', title: 'Broadcasts', path: '/reports/broadcasts', heading: 'Broadcasts' },
   { group: 'Contacts', title: 'Follow-ups', path: '/reports/follow-ups', heading: 'Follow-ups' },
   { group: 'Appointments', title: 'Overview', path: '/reports/appointments', heading: 'Appointments' },
@@ -41,7 +48,7 @@ export const REPORTS: ReportEntry[] = [
     path: '/reports/collections/verification',
     heading: 'Needs verification',
   },
-  { group: 'Team', title: 'Team performance', path: '/reports/agents', heading: 'Team performance' },
+  { group: 'Performance', title: 'Team performance', path: '/reports/agents', heading: 'Team performance' },
 ];
 
 /** Reports home (/reports) and the report pages it links to. */

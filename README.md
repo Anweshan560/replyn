@@ -43,8 +43,7 @@ of the same names on CI). Without it those tests are skipped.
 | All of Settings (except the exclusive tests)               | `npm run test:settings`                                           |
 | Settings → Members                                         | `npm run test:members`                                            |
 | Settings → Roles and Workspace Members                     | `npm run test:roles`                                              |
-| Settings → Contact Fields / Outcome Reasons                | `npm run test:contact-fields` / `npm run test:outcome-reasons`    |
-| Settings → Wrap-Up (one test at a time)                    | `npm run test:wrap-up`                                            |
+| Settings → Contact Fields                                  | `npm run test:contact-fields`                                     |
 | Settings → API Keys and Webhooks                           | `npm run test:api-keys`                                           |
 | Inbox: saved Views, conversation actions, Instagram        | `npm run test:inbox`                                              |
 | Reports: every report loads, and the API                   | `npm run test:reports`                                            |
@@ -82,11 +81,6 @@ They live in the `exclusive` project and run only through `npm run test:exclusiv
 time, and every test restores the original values. In any other run they show as _skipped_, with that
 reason. On CI they run after the regression suite.
 
-**Why Settings → Wrap-Up runs one test at a time:** a workspace has a single wrap-up, so two tests
-changing it at once would overwrite each other. Its tests have their own `workspace-settings` project
-(one worker), which runs alongside the parallel tests in every normal run, and each test puts the
-wrap-up back as it found it.
-
 **Why the inbox conversation tests run one at a time:** `tests/inbox/conversation` and
 `tests/inbox/instagram` all work on the one real Instagram conversation (see "Daily Instagram
 message"). They have their own `inbox` project (one worker, UI and API), which runs alongside the
@@ -123,7 +117,7 @@ marker and is not swept.
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `tests/auth/`             | Login: UI (`login.spec.ts`) and API (`login.api.spec.ts`).                                                 |
 | `tests/clinic/<feature>/` | Doctors, Treatments, Departments, Appointments, Billing: UI and API tests side by side.                    |
-| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, Wrap-Up, API Keys, …).               |
+| `tests/settings/<page>/`  | Every automated Settings page (Organization, Members, Contact Fields, API Keys, …).                        |
 | `tests/contacts/`         | Contacts: list, create, row actions, side panel and segments (UI), and the contacts API.                   |
 | `tests/inbox/<feature>/`  | Inbox: saved Views, conversation actions (`conversation/`) and the daily Instagram message (`instagram/`). |
 | `tests/reports/`          | Reports: each report loads (UI) and answers (API); `numbers/` checks counts with seeded data (exclusive).  |
@@ -239,7 +233,6 @@ without a login token (401). `doctors.api.spec.ts` has all of them.
 | Situation                                                                | What to do                                                                                                                                                                     |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The test changes something the whole workspace shares (hours, SLAs, AI…) | Put it under one of the folders in `EXCLUSIVE_TESTS` in `playwright.config.ts` and call `runOnlyOnItsOwn()`; save the current value first and restore it with `cleanup.add()`. |
-| A setting the workspace has only one of (like Wrap-Up)                   | Add the folder to `WORKSPACE_SETTINGS_TESTS`: those run one at a time next to the others.                                                                                      |
 | The test finds a real bug in the app                                     | Add the bug to `scripts/known-bugs.json`, call `knownBug('<key>')` first thing in the test, and create its issue: `npm run known-bugs -- --create`. See "Known bugs".          |
 | The test checks what a limited role may do                               | Put it in `tests/permissions`: it runs logged in as the Agent account.                                                                                                         |
 | The test fails now and then for reasons outside the app                  | Fix it. While you do, tag it `@quarantine`. See "Flaky tests".                                                                                                                 |

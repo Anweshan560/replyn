@@ -16,7 +16,13 @@ type PatientRow = { contactId: string; contactName: string; balance: string; out
 // and advances, so the cleanup leaves the workspace's billing as it was.
 test.describe('Billing API', { tag: ['@clinic', '@billing'] }, () => {
   test.describe('advances', () => {
-    test("should add an advance to the patient's account", async ({ billingApi, contactsApi, cleanup }) => {
+    // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+    // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+    test.fixme("should add an advance to the patient's account", async ({
+      billingApi,
+      contactsApi,
+      cleanup,
+    }) => {
       const contact = await test.step('create a patient', () => contactsApi.createRecord(buildPatient()));
       cleanup.add(`patient ${contact.id}`, () => contactsApi.deleteIfExists(contact.id));
       const amount = buildPaymentAmount();
@@ -69,7 +75,9 @@ test.describe('Billing API', { tag: ['@clinic', '@billing'] }, () => {
       expect((await response.json()).message).toHaveProperty('amount');
     });
 
-    test('should answer 404 "No such contact" for an unknown patient', async ({ billingApi }) => {
+    // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+    // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+    test.fixme('should answer 404 "No such contact" for an unknown patient', async ({ billingApi }) => {
       const response = await billingApi.addAdvance(MISSING_ID, { amount: 10, advanceDate: today() });
 
       expect(response.status()).toBe(404);
@@ -78,7 +86,9 @@ test.describe('Billing API', { tag: ['@clinic', '@billing'] }, () => {
   });
 
   test.describe('lists', () => {
-    test('should list a patient with an advance under credit and all, but not under owes', async ({
+    // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+    // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+    test.fixme('should list a patient with an advance under credit and all, but not under owes', async ({
       billingApi,
       contactsApi,
       cleanup,
@@ -110,7 +120,9 @@ test.describe('Billing API', { tag: ['@clinic', '@billing'] }, () => {
       });
     });
 
-    test('should put an attended visit with no invoice in the review queue, and take it out once paid', async ({
+    // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+    // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+    test.fixme('should put an attended visit with no invoice in the review queue, and take it out once paid', async ({
       appointmentsApi,
       billingApi,
       contactsApi,
@@ -153,7 +165,9 @@ test.describe('Billing API', { tag: ['@clinic', '@billing'] }, () => {
       });
     });
 
-    test("should show a paid visit's invoice and receipt in the ledger", async ({
+    // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+    // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+    test.fixme("should show a paid visit's invoice and receipt in the ledger", async ({
       appointmentsApi,
       billingApi,
       contactsApi,

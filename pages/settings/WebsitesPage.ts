@@ -7,7 +7,7 @@ export class WebsitesPage extends SettingsTablePage<WebsiteData> {
   constructor(page: Page) {
     super(page, {
       path: '/settings/websites',
-      menu: ['Workspace', 'Websites'],
+      menu: ['Connections', 'Websites'],
       addButtonName: 'New website',
       createDialog: { name: 'Add Website', submitButton: 'Add' },
       editDialog: { name: 'Edit Website', submitButton: 'Update' },

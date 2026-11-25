@@ -15,17 +15,15 @@ test.describe('Clinic → Appointments', { tag: ['@clinic', '@appointments'] }, 
     { tag: '@smoke' },
     async ({ page, appointmentsPage, doctorsApi, treatmentsApi, cleanup }) => {
       const { doctor } = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
-      // The heading's name is e.g. "Friday October 30 2026".
-      const today = new Date()
-        .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-        .replace(/,/g, '');
+      // The side panel's heading, e.g. "Wednesday, 25 November".
+      const now = new Date();
+      const today = `${now.toLocaleDateString('en-US', { weekday: 'long' })}, ${now.getDate()} ${now.toLocaleDateString('en-US', { month: 'long' })}`;
 
       await test.step('click Clinic in the main sidebar', () => appointmentsPage.openFromSidebar());
 
       await test.step("the calendar shows today in Day view, with the new doctor's column", async () => {
         await expect(page).toHaveURL(/\/appointments/);
-        // Check the heading's name: its visible text runs the words together ("FridayOctober 30").
-        await expect(appointmentsPage.dateHeading).toHaveAccessibleName(today);
+        await expect(appointmentsPage.dateHeading).toHaveText(today);
         await expect(appointmentsPage.doctorColumn(doctor.name)).toBeVisible();
         await expect(appointmentsPage.newAppointmentButton).toBeVisible();
       });
@@ -290,8 +288,9 @@ test.describe('Clinic → Appointments', { tag: ['@clinic', '@appointments'] }, 
   }) => {
     const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
     const day = nextClinicDay();
+    const patient = buildPatient();
     await test.step('book an appointment (through the API)', () =>
-      bookThroughApi({ appointmentsApi, contactsApi }, cleanup, setup, buildPatient(), day));
+      bookThroughApi({ appointmentsApi, contactsApi }, cleanup, setup, patient, day));
 
     await test.step('with every doctor shown, only Day view is offered', async () => {
       // The workspace always has its own "doct1" besides the test's doctor, so several are shown.
@@ -310,13 +309,16 @@ test.describe('Clinic → Appointments', { tag: ['@clinic', '@appointments'] }, 
     await test.step('Week view: the address has calendar=week and the appointment shows', async () => {
       await appointmentsPage.switchView('Week');
       await expect(page).toHaveURL((url) => url.searchParams.get('calendar') === 'week');
-      await expect(appointmentsPage.dateHeading).toHaveAccessibleName(/^Week of /);
+      await expect(appointmentsPage.viewButton('Week')).toBeChecked();
       await expect(appointmentsPage.card(setup.treatment.name)).toBeVisible();
     });
     await test.step('Month view: the address has calendar=month and the appointment shows', async () => {
       await appointmentsPage.switchView('Month');
       await expect(page).toHaveURL((url) => url.searchParams.get('calendar') === 'month');
-      await expect(appointmentsPage.card(setup.treatment.name)).toBeVisible();
+      // Month view lists the patient's name in the day's cell, without the treatment.
+      await expect(
+        appointmentsPage.main.getByRole('table', { name: 'Month View' }).getByText(fullName(patient)),
+      ).toBeVisible();
     });
     await test.step('Today brings the calendar back to today', async () => {
       await appointmentsPage.switchView('Day');

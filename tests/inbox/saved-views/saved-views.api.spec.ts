@@ -57,10 +57,10 @@ test.describe('Saved Views API', { tag: ['@inbox', '@saved-views'] }, () => {
     const response = await test.step('DELETE it', () => customViewsApi.delete(created.id));
 
     await test.step('responds 200', () => expect(response.status()).toBe(200));
-    await test.step('GET by id now responds 404 "No custom view found", and the list does not contain it', async () => {
+    await test.step('GET by id now responds 404 "Segment not found", and the list does not contain it', async () => {
       const get = await customViewsApi.get(created.id);
       expect(get.status()).toBe(404);
-      expect((await get.json()).message).toBe('No custom view found');
+      expect((await get.json()).message).toBe('Segment not found');
       expect(await customViewsApi.findRecord(created.id)).toBeUndefined();
     });
   });
@@ -83,7 +83,7 @@ test.describe('Saved Views API', { tag: ['@inbox', '@saved-views'] }, () => {
     });
   });
 
-  test('should reject an empty view with 422 saying the name and icon are required', async ({
+  test('should reject an empty view with 422 saying the name is required', async ({
     customViewsApi,
     cleanup,
   }) => {
@@ -92,9 +92,9 @@ test.describe('Saved Views API', { tag: ['@inbox', '@saved-views'] }, () => {
     const body = await response.json();
     if (body.data?.id) cleanup.add('saved view', () => customViewsApi.deleteIfExists(body.data.id));
 
-    await test.step('responds 422 saying the name and icon are required', () => {
+    await test.step('responds 422 saying the name is required', () => {
       expect(response.status()).toBe(422);
-      expect(body.message).toEqual({ name: 'name should not be empty', icon: 'icon should not be empty' });
+      expect(body.message).toEqual({ name: 'name should not be empty' });
     });
   });
 

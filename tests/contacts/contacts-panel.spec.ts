@@ -54,7 +54,7 @@ test.describe('Contacts → side panel', { tag: ['@contacts'] }, () => {
       await expect(async () => {
         for (const stage of await lifecyclesApi.openStages()) {
           expect(await contactsPage.cardCount(stage.name), `count of "${stage.name}"`).toBe(
-            stage.contactCount,
+            await contactsApi.listedInStage(stage.id),
           );
         }
       }).toPass({ timeout: 30_000 });
@@ -108,23 +108,19 @@ test.describe('Contacts → side panel', { tag: ['@contacts'] }, () => {
     const root = panel.root;
 
     // A new contact has no messages, bookings or bills, so each tab shows its empty state.
-    await test.step('Overview shows Notes and Timeline', async () => {
+    await test.step('Overview shows Highlights and Notes', async () => {
       await panel.openTab('Overview');
+      await expect(root.getByRole('region', { name: 'Highlights' })).toBeVisible();
       await expect(panel.notes).toBeVisible();
-      await expect(root.getByRole('region', { name: 'Timeline' })).toBeVisible();
     });
     await test.step('Messages shows the empty conversation', async () => {
       await panel.openTab('Messages');
       await expect(root.getByText('No messages yet')).toBeVisible();
     });
-    await test.step('Appointments shows "No appointments yet"', async () => {
-      await panel.openTab('Appointments');
-      await expect(root.getByRole('heading', { name: 'No appointments yet' })).toBeVisible();
-      await expect(root.getByRole('button', { name: 'New appointment' })).toBeVisible();
-    });
-    await test.step('Billing shows "Nothing billed yet"', async () => {
-      await panel.openTab('Billing');
-      await expect(root.getByRole('heading', { name: 'Nothing billed yet' })).toBeVisible();
+    await test.step('Visits shows "No visits yet" and owes nothing', async () => {
+      await panel.openTab('Visits');
+      await expect(root.getByRole('heading', { name: 'No visits yet' })).toBeVisible();
+      await expect(root.getByRole('button', { name: /^Owes Nothing/ })).toBeVisible();
     });
     await test.step('History lists the contact being created', async () => {
       await panel.openTab('History');
@@ -138,7 +134,9 @@ test.describe('Contacts → side panel', { tag: ['@contacts'] }, () => {
     });
   });
 
-  test('should close the conversation when user resolves it with a closing note', async ({
+  // Since 2026-11-25 Resolve opens the new lead wrap-up flow, part of Lead stages, which the user
+  // asked to test later. Rewrite this test then.
+  test.fixme('should close the conversation when user resolves it with a closing note', async ({
     contactsPage,
     contactsApi,
     closingNotesApi,

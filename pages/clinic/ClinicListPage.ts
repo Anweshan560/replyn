@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { waitForApiResponse } from '../../utils/network';
+import { openFromSidebarGroup } from '../Sidebar';
 
 /** What identifies one section of Clinic (Doctors, Treatments, Departments). */
 export type ClinicSection = {
@@ -37,11 +38,7 @@ export abstract class ClinicListPage {
   /** Go from the dashboard to this section through the Clinic menu, as a user would. */
   async openFromDashboard(): Promise<void> {
     await this.page.goto('/dashboard');
-    await this.page.getByRole('link', { name: 'Clinic' }).click();
-    // Click inside the Clinic menu once it has appeared: clicking while the page is still
-    // switching to Clinic can be lost.
-    const clinicMenu = this.page.getByRole('navigation', { name: 'Clinic navigation' });
-    await clinicMenu.getByRole('link', { name: this.section.menuLinkName }).click();
+    await openFromSidebarGroup(this.page, 'Clinic', this.section.menuLinkName);
     await expect(this.page).toHaveURL(this.section.listPath);
   }
 

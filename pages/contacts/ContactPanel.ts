@@ -4,7 +4,8 @@ import { waitForApiResponse } from '../../utils/network';
 import type { ContactData } from '../../utils/testData';
 
 /** The side panel's tabs. */
-export type ContactTab = 'Overview' | 'Messages' | 'Appointments' | 'Billing' | 'History' | 'Details';
+/** Since the 2026-11-25 redesign Visits holds what Appointments and Billing used to. */
+export type ContactTab = 'Overview' | 'Messages' | 'Visits' | 'History' | 'Details';
 
 /**
  * The side panel that opens over the Contacts list (View details, Edit): the contact's stage,
@@ -118,7 +119,8 @@ export class ContactPanel {
 
   /** On the Billing tab: Add advance for `amount` with a note, and save. */
   async addAdvance(contactId: string, amount: number, note: string): Promise<void> {
-    await this.openTab('Billing');
+    // Billing moved into Visits in the 2026-11-25 redesign; this flow still needs checking there.
+    await this.openTab('Visits');
     await this.root.getByRole('button', { name: 'Add advance' }).click();
     const dialog = this.page.getByRole('dialog', { name: 'Add an advance' });
     await expect(dialog).toBeVisible();

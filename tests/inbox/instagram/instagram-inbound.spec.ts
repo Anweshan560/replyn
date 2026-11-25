@@ -19,10 +19,11 @@ test.describe('Instagram inbound messages', { tag: ['@inbox', '@instagram'] }, (
     const { contactId, message } = await test.step('find the newest daily message', () =>
       inboxApi.getDailyMessage());
 
-    await test.step('open the conversation and search for it: the message is in the thread', async () => {
+    await test.step('open the conversation and scroll up to it: the message is in the thread', async () => {
       await conversationPage.open(contactId);
-      // Notes and replies added since push it far up the thread; find it as an agent would.
-      await conversationPage.searchMessages(message.text!);
+      // Notes and replies added since push it far up the thread. The conversation's own message
+      // search went away in the 2026-11-25 redesign, so scroll up to it as an agent would.
+      await conversationPage.scrollThreadTo(conversationPage.message(message.text!), 'up');
       await expect(conversationPage.message(message.text!)).toBeVisible();
     });
 

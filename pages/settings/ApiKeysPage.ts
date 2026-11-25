@@ -14,7 +14,7 @@ export class ApiKeysPage extends SettingsTablePage<ApiKeyData> {
   constructor(page: Page) {
     super(page, {
       path: '/settings/developer',
-      menu: ['Workspace', 'API Keys'],
+      menu: ['Connections', 'API Keys'],
       addButtonName: 'Add API key',
       createDialog: { name: 'Add API Key', submitButton: 'Create' },
       editDialog: { name: 'Edit API Key', submitButton: 'Update' },

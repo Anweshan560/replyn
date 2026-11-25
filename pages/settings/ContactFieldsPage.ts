@@ -27,7 +27,7 @@ export class ContactFieldsPage {
   }
 
   async openFromDashboard(): Promise<void> {
-    await this.navigation.openFromDashboard('Workspace', 'Contact Fields');
+    await this.navigation.openFromDashboard('Contacts', 'Contact Fields');
     await expect(this.page).toHaveURL('/settings/contact-fields');
   }
 

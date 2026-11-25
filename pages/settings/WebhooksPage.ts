@@ -32,7 +32,7 @@ export class WebhooksPage {
 
   /** Go to Settings → API Keys through the menu, then open the Webhooks tab. */
   async openFromDashboard(): Promise<void> {
-    await this.navigation.openFromDashboard('Workspace', 'API Keys');
+    await this.navigation.openFromDashboard('Connections', 'API Keys');
     await expect(this.page).toHaveURL('/settings/developer');
     await this.openTab();
   }

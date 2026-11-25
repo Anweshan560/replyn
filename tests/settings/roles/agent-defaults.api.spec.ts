@@ -24,7 +24,7 @@ test.describe('Roles: the Agent role on records others made', { tag: ['@roles', 
     );
     cleanup.add(`view ${shared.name}`, () => customViewsApi.deleteIfExists(shared.id));
     const agentViews = new CustomViewsApi(request, agent.headers);
-    const refusal = 'Only the creator can change this view';
+    const refusal = 'Only whoever made this, or an Admin when it is shared, can change it.';
 
     await test.step("the Agent's list has it", async () => {
       expect((await agentViews.listRecords()).map((view) => view.id)).toContain(shared.id);
@@ -42,7 +42,9 @@ test.describe('Roles: the Agent role on records others made', { tag: ['@roles', 
     });
   });
 
-  test('should let an Agent correct a payment they recorded today, but not one someone else recorded', async ({
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.fixme('should let an Agent correct a payment they recorded today, but not one someone else recorded', async ({
     request,
     appointmentsApi,
     billingApi,

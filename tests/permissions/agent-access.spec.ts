@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test';
+import { knownBug } from '../../utils/knownBug';
 import { getAgentCredentials } from '../../config/env';
 import { AccessPage } from '../../pages/permissions/AccessPage';
 
@@ -13,11 +14,13 @@ test.describe('Permissions: Agent in the browser', { tag: ['@permissions'] }, ()
 
     const paths = await test.step('read the sidebar links', () => access.sidebarPaths());
 
-    await test.step('Home, Inbox, Contacts, Appointments, Snippets and Files, nothing more', () => {
+    await test.step('Home, Inbox, Contacts, Leads, Appointments, Snippets and Files, nothing more', () => {
       expect(paths).toEqual([
         '/dashboard',
         '/inbox',
         '/contacts',
+        // Leads arrived with the 2026-11-25 redesign, and Agents work leads.
+        '/leads',
         '/appointments',
         '/settings/snippets',
         '/settings/files',
@@ -50,11 +53,12 @@ test.describe('Permissions: Agent in the browser', { tag: ['@permissions'] }, ()
   }
 
   test('should offer an Agent no Share choice in the New view dialog', async ({ savedViewsPage }) => {
-    // Views → Create is ticked for the Agent, Share is not: their views are "Just me" only.
+    knownBug('agent-offered-view-sharing');
+    // Views → Create is ticked for the Agent, Share is not: their views are "Only me" only.
     await savedViewsPage.open();
     await test.step('open New view', () => savedViewsPage.openCreateDialog());
 
-    await test.step('neither "Just me" nor "Everyone" is offered', async () => {
+    await test.step('neither "Only me" nor "Everyone" is offered', async () => {
       await expect(savedViewsPage.createDialog.getByRole('button', { name: 'Create view' })).toBeVisible();
       await expect(savedViewsPage.createDialog.getByRole('radio')).toHaveCount(0);
       await expect(savedViewsPage.createDialog.getByText('Everyone', { exact: true })).toHaveCount(0);

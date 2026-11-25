@@ -1,15 +1,20 @@
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { ENDPOINTS, ResourceApi, type HeadersProvider } from './ResourceApi';
+import { sendTimed } from '../utils/timing';
 import { VIEW_FIELDS, VIEW_OPERATORS, type SavedViewData } from '../utils/testData';
 
 export type ViewRulePayload = { field: string; operator: string; value: string };
 
-/** "Share" is stored as `visibility`: "Just me" is private, "Everyone" is workspace. */
+/**
+ * An inbox view. Since the 2026-11-25 redesign views are segments with `surface: "inbox"` (the old
+ * /v1/custom-views is gone, and views no longer have an icon). "Who sees it" is stored as
+ * `visibility`: "Only me" is private, "Everyone" is workspace.
+ */
 export type CustomViewPayload = {
   name?: string;
-  icon?: string;
+  surface?: 'inbox';
   visibility?: 'private' | 'workspace';
-  query?: { rules: ViewRulePayload[] };
+  filter?: { rules: ViewRulePayload[] };
 };
 
 export type CustomViewRecord = Required<CustomViewPayload> & { id: string };
@@ -17,9 +22,9 @@ export type CustomViewRecord = Required<CustomViewPayload> & { id: string };
 export function toCustomViewPayload(view: SavedViewData): CustomViewPayload {
   return {
     name: view.name,
-    icon: view.icon.emoji,
+    surface: 'inbox',
     visibility: view.share === 'Everyone' ? 'workspace' : 'private',
-    query: {
+    filter: {
       rules: [
         {
           field: VIEW_FIELDS[view.rule.field],
@@ -31,9 +36,17 @@ export function toCustomViewPayload(view: SavedViewData): CustomViewPayload {
   };
 }
 
-/** Inbox saved views. They update with PUT. */
+/** Inbox views: segments of the inbox surface. They update with PUT. */
 export class CustomViewsApi extends ResourceApi<CustomViewPayload, CustomViewRecord> {
   constructor(request: APIRequestContext, headers: HeadersProvider) {
-    super(request, headers, ENDPOINTS.customViews, 'PUT');
+    super(request, headers, ENDPOINTS.segments, 'PUT');
+  }
+
+  /** The list only holds inbox views when asked for them: without `surface` it is empty. */
+  override async list(page?: number): Promise<APIResponse> {
+    const headers = await this.headers();
+    const params: Record<string, string | number> = { surface: 'inbox' };
+    if (page && page > 1) params.page = page;
+    return sendTimed(() => this.request.get(this.url(), { headers, params }));
   }
 }

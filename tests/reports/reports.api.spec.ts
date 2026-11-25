@@ -10,8 +10,10 @@ const SUMMARIES: { report: string; params?: Record<string, string> }[] = [
   { report: 'daily-tracker' },
   { report: 'daily-operations/summary' },
   { report: 'contacts/summary' },
-  { report: 'leads/summary' },
-  { report: 'leads/lost' },
+  // The Leads reports were rebuilt on 2026-11-25: leads/summary and leads/lost became these.
+  { report: 'leads/overview' },
+  { report: 'leads/acquisition', params: { breakdown: 'source' } },
+  { report: 'leads/endings', params: { breakdown: 'source' } },
   { report: 'campaigns/summary' },
   { report: 'broadcasts/summary' },
   { report: 'follow-ups/summary' },

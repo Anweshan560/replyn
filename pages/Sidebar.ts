@@ -1,5 +1,34 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { AccountMenu } from './AccountMenu';
+
+/**
+ * Open a page from a collapsible group of the main sidebar, e.g. Clinic → Doctors.
+ *
+ * Since the 2026-11-25 redesign the sidebar is a narrow rail of icons. Hovering it opens the full
+ * menu, where a group like Clinic is a button that expands to show its pages (its rail icon is
+ * a link that only goes to the group's first page). The menu can close again if the mouse leaves
+ * it before the click lands, so the whole sequence is retried.
+ * @param group the group's name, e.g. "Clinic"
+ * @param linkName the page inside it, e.g. "Doctors". A count after the name ("Appointments 59")
+ *   is allowed.
+ */
+export async function openFromSidebarGroup(page: Page, group: string, linkName: string): Promise<void> {
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  const groupLinks = nav.getByRole('group', { name: group });
+  const escaped = linkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const link = groupLinks.getByRole('link', { name: new RegExp(`^${escaped}( \\d+)?$`) });
+  const groupButton = nav.getByRole('button', { name: group, exact: true });
+  await expect(async () => {
+    if (!(await groupLinks.isVisible())) {
+      // Hovering the rail turns the group's icon into its expand button.
+      await nav.getByRole('link', { name: group, exact: true }).or(groupButton).hover({ timeout: 5_000 });
+      if ((await groupButton.getAttribute('aria-expanded', { timeout: 5_000 })) !== 'true') {
+        await groupButton.click({ timeout: 5_000 });
+      }
+    }
+    await link.click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+}
 
 /**
  * The widgets at the bottom of the sidebar (the app has no top bar): Search, Tutorials, Settings,

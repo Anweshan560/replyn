@@ -55,12 +55,12 @@ export class ContactsPage {
   constructor(private readonly page: Page) {
     this.table = page.getByRole('grid', { name: 'Contacts table' });
     this.searchBox = page.getByRole('searchbox', { name: 'Search contacts', exact: true });
-    this.clearSearchButton = page.getByRole('banner').getByRole('button', { name: 'Close' });
+    this.clearSearchButton = page.getByRole('banner').getByRole('button', { name: 'Clear search' });
     this.sidebar = page.getByRole('navigation', { name: 'Contacts navigation' });
     this.addContactButton = page.getByRole('button', { name: 'Add Contact' });
-    // .first(): these toolbar buttons are nested in a second button with the same name.
-    this.filterButton = page.getByRole('button', { name: 'Filter contacts' }).first();
-    this.columnsButton = page.getByRole('button', { name: 'Columns' }).first();
+    // Since the 2026-11-25 redesign Filter opens a menu of fields to filter by.
+    this.filterButton = page.getByRole('banner').getByRole('button', { name: 'Filter', exact: true });
+    this.columnsButton = page.getByRole('banner').getByRole('button', { name: 'Columns' });
     this.listViewButton = page.getByRole('radio', { name: 'List view' });
     this.cardViewButton = page.getByRole('radio', { name: 'Card view' });
     this.perPageButton = page.getByRole('button', { name: 'Per page' });
@@ -70,7 +70,7 @@ export class ContactsPage {
     this.segmentActionsButton = page.getByLabel('Segment actions');
     this.createDialog = new CreateContactDialog(page);
     this.filtersDialog = new ContactFiltersDialog(page);
-    this.newSegmentDialog = page.getByRole('dialog', { name: 'Create segment' });
+    this.newSegmentDialog = page.getByRole('dialog', { name: 'New segment' });
     this.deleteSegmentDialog = page.getByRole('dialog', { name: 'Delete segment?' });
     this.noMatches = page.getByText('No contacts match');
   }
@@ -146,7 +146,8 @@ export class ContactsPage {
   /** A link in the left panel, e.g. "Everyone", a stage, a segment or a treatment. */
   sidebarLink(name: string): Locator {
     // Stage links start with their emoji (e.g. "🔥 Hot Lead"), so match the end of the name.
-    return this.sidebar.getByRole('link', { name: new RegExp(`${escapeRegExp(name)}$`) });
+    // Segment links end with their contact count (e.g. "VIP patients 2"), which is allowed.
+    return this.sidebar.getByRole('link', { name: new RegExp(`${escapeRegExp(name)}( \\d+)?$`) });
   }
 
   /**

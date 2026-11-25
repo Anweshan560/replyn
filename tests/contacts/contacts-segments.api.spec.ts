@@ -138,6 +138,8 @@ test.describe('Segments API', { tag: ['@contacts'] }, () => {
       ['an empty name', ''],
     ] as const) {
       test(`should reject a segment with ${label} with 422`, async ({ segmentsApi }) => {
+        // Since 2026-11-25 a missing name is reported as "too long", like the other endpoints.
+        if (name === undefined) knownBug('misleading-required-field-messages');
         const response = await test.step('POST the segment', () =>
           segmentsApi.create({ ...buildSegment(), name }));
 

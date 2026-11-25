@@ -10,7 +10,11 @@ import type { ContactData } from '../utils/testData';
 // --- Contacts ---------------------------------------------------------------------------------
 
 /** Where a contact came from: the create dialog's Origin. */
-export type ContactOrigin = 'manual' | 'referral' | 'emr';
+/**
+ * Where a contact came from. The API called it `origin` until the 2026-11-25 redesign and now calls
+ * it `source` (it still accepts `origin` when creating). Contacts that arrive by message are "organic".
+ */
+export type ContactOrigin = 'manual' | 'referral' | 'emr' | 'organic';
 
 /** Request body for POST and PATCH /v1/contacts. */
 export type ContactPayload = {
@@ -21,8 +25,8 @@ export type ContactPayload = {
   email?: string;
   address?: string;
   lifecycleId?: string;
-  origin?: ContactOrigin;
-  /** The dialog's "Referred by"; required by the UI when the origin is a referral. */
+  source?: ContactOrigin;
+  /** The dialog's "Who sent them"; required by the UI when the source is a referral. */
   referredByName?: string;
   /** Tag ids. */
   tags?: string[];
@@ -61,7 +65,7 @@ export type Contact = {
   email: string | null;
   address: string | null;
   lifecycleId: string;
-  origin: ContactOrigin | null;
+  source: ContactOrigin | null;
   referredByName: string | null;
   tags: string[];
   treatmentIds: string[];
@@ -129,6 +133,19 @@ export class ContactsApi extends ResourceApi<ContactPayload, Contact> {
     return (await response.json()).data;
   }
 
+  /**
+   * How many contacts the list shows in a stage: the card view's count. Disqualified contacts are
+   * left out (More → Disqualified), so this can be lower than the stage's own contactCount.
+   */
+  async listedInStage(lifecycleId: string): Promise<number> {
+    const { meta } = await this.searchRecords({
+      page: 1,
+      limit: 1,
+      filter: { rules: [{ field: 'lifecycle', operator: 'isEqualTo', value: lifecycleId }] },
+    });
+    return meta.count;
+  }
+
   /** GET the contact's timeline: notes, stage changes and other activity. */
   async events(id: string): Promise<APIResponse> {
     const headers = await this.headers();
@@ -166,9 +183,12 @@ export type SegmentPayload = { name?: string; filter?: { rules: FilterRule[] } }
 
 export type Segment = { id: string; name: string; filter: { rules: FilterRule[] } };
 
-/** A rule matching contacts whose first name contains `text`, as the Filters dialog builds it. */
+/**
+ * A rule matching contacts whose first name contains `text`, as the New segment dialog builds it
+ * (it stopped adding `valueSource: "value"` in the 2026-11-25 redesign).
+ */
 export function firstNameContains(text: string): FilterRule {
-  return { field: 'firstName', operator: 'contains', valueSource: 'value', value: text };
+  return { field: 'firstName', operator: 'contains', value: text };
 }
 
 /** Segments update with PUT; PATCH answers 404. */
@@ -188,10 +208,10 @@ export type Lifecycle = {
   /** Position within its group: 1 is the first stage. */
   stage: number;
   /**
-   * "lead" for the pipeline's stages; "lost" for the ones the card view folds away under "Lost
-   * stages" (e.g. Cold Lead, even though its isLost is false).
+   * "lead" or "lost". The API stopped returning it in the 2026-11-25 redesign: stages are now one
+   * ordered list.
    */
-  type: 'lead' | 'lost';
+  type?: 'lead' | 'lost';
   isDefault: boolean;
   isWon: boolean;
   isLost: boolean;
@@ -232,10 +252,13 @@ export class LifecyclesApi extends ResourceApi<LifecyclePayload, Lifecycle> {
     return this.stagesWithCounts();
   }
 
-  /** The pipeline's stages, in order: the card view's columns (lost stages are folded away). */
+  /**
+   * The pipeline's stages, in order. Stages used to have a type and the "lost" ones were left out
+   * here; since the API dropped the type (2026-11-25) this is every stage.
+   */
   async openStages(): Promise<Lifecycle[]> {
     return (await this.stagesWithCounts())
-      .filter((stage) => stage.type === 'lead')
+      .filter((stage) => stage.type === undefined || stage.type === 'lead')
       .sort((a, b) => a.stage - b.stage);
   }
 

@@ -32,6 +32,8 @@ export type ConversationStatus = 'open' | 'closed' | 'snoozed';
 /** The conversation fields kept on the contact (a conversation belongs to one contact). */
 export type ConversationState = {
   id: string;
+  firstName?: string | null;
+  lastName?: string | null;
   username: string | null;
   status: ConversationStatus;
   snoozedUntil: string | null;
@@ -77,7 +79,8 @@ type ConversationRow = { contact: ConversationState; message: InboxMessage | nul
 export type DailyMessage = { contactId: string; channelId: string; message: InboxMessage };
 
 /** The Instagram conversation the inbox tests work on, whatever its state. */
-export type TestConversation = { contactId: string; channelId: string; username: string };
+/** `name` is the contact's name as the conversation list shows it, e.g. "qa.sender anweshan". */
+export type TestConversation = { contactId: string; channelId: string; username: string; name: string };
 
 /** What restoreConversation() puts back after a test. */
 export type ConversationSnapshot = Pick<
@@ -328,7 +331,8 @@ export class InboxApi {
       );
       if (fromSender) {
         const channelId = contact.channels.find((c) => c.type === 'instagram')!.id;
-        return { contactId: contact.id, channelId, username: contact.username ?? '' };
+        const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ');
+        return { contactId: contact.id, channelId, username: contact.username ?? '', name };
       }
     }
     throw new Error(

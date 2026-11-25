@@ -4,14 +4,18 @@ import { waitForApiResponse } from '../../utils/network';
 import { collapseSetupGuide } from '../setupGuide';
 import type { SavedViewData } from '../../utils/testData';
 
+/** Where views are saved since the 2026-11-25 redesign: segments of the inbox surface. */
+const VIEWS_PATH = new RegExp(`^${ENDPOINTS.segments}/?$`);
+const VIEW_PATH = new RegExp(`^${ENDPOINTS.segments}/[^/]+$`);
+
 /**
- * Inbox → Views: saved filters listed in the inbox sidebar. A view is created and edited in a
- * dialog with one or more filter rules; its "Manage" menu offers Edit and Delete.
+ * Inbox → Views: saved filters listed in the inbox sidebar. A view is created in the New view
+ * dialog (name, who sees it, and filter rules); its actions menu offers Rename and Delete.
  */
 export class SavedViewsPage {
   readonly newViewButton: Locator;
   readonly createDialog: Locator;
-  readonly editDialog: Locator;
+  readonly sidebar: Locator;
 
   constructor(
     private readonly page: Page,
@@ -19,7 +23,7 @@ export class SavedViewsPage {
   ) {
     this.newViewButton = page.getByRole('button', { name: 'New view', exact: true });
     this.createDialog = page.getByRole('dialog', { name: 'New view' });
-    this.editDialog = page.getByRole('dialog', { name: 'Edit view' });
+    this.sidebar = page.getByRole('navigation', { name: 'Inbox navigation' });
   }
 
   /** The inbox's own address: each workspace has its own inbox. */
@@ -39,39 +43,33 @@ export class SavedViewsPage {
 
   /** Open the inbox directly and wait until the saved views have loaded. */
   async open(): Promise<void> {
-    const loaded = waitForApiResponse(this.page, 'GET', ENDPOINTS.customViews);
+    const loaded = this.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === ENDPOINTS.segments &&
+        new URL(response.url()).searchParams.get('surface') === 'inbox',
+    );
     await this.page.goto(this.inboxPath);
     expect((await loaded).ok(), 'the saved views should load').toBe(true);
   }
 
-  /** The view's link in the sidebar, e.g. "🚀 VIP patients". */
-  sidebarLink(view: SavedViewData): Locator {
-    return this.page.getByRole('link', { name: `${view.icon.emoji} ${view.name}`, exact: true });
+  /** The view's link in the sidebar. Its name ends with the number of conversations in it. */
+  sidebarLink(view: Pick<SavedViewData, 'name'>): Locator {
+    return this.sidebar.getByRole('link', { name: new RegExp(`^${escapeRegExp(view.name)}( \\d+)?$`) });
   }
 
   /**
-   * Create a view through the New view dialog, starting from the inbox. The sidebar's "Advanced
-   * filters" opens the same dialog as "New view".
-   * @param onFilled runs once the rule is filled in, before Create view (e.g. to read "Matches …").
+   * Create a view through the New view dialog, starting from the inbox.
+   * @param onFilled runs once the rule is filled in, before Create view (e.g. to read the count).
    * @returns the new view's id, taken from the server's answer.
    */
   async createView(
     view: SavedViewData,
-    {
-      from = 'New view',
-      onFilled,
-    }: { from?: 'New view' | 'Advanced filters'; onFilled?: () => Promise<void> } = {},
+    { onFilled }: { onFilled?: () => Promise<void> } = {},
   ): Promise<string> {
-    if (from === 'Advanced filters') {
-      await this.page.getByRole('button', { name: 'Advanced filters', exact: true }).click();
-      await expect(this.createDialog).toBeVisible();
-    } else {
-      await this.openCreateDialog();
-    }
-    await this.createDialog.getByRole('button', { name: 'Add rule' }).click();
-    await this.fillDialog(this.createDialog, view);
+    await this.openCreateDialog();
+    await this.fillDialog(view);
     await onFilled?.();
-    const created = waitForApiResponse(this.page, 'POST', ENDPOINTS.customViews);
+    const created = waitForApiResponse(this.page, 'POST', VIEWS_PATH);
     await this.createDialog.getByRole('button', { name: 'Create view' }).click();
     const response = await created;
     expect(response.status(), 'the server should create the view').toBe(201);
@@ -79,9 +77,9 @@ export class SavedViewsPage {
     return (await response.json()).data.id;
   }
 
-  /** The dialog's live count, e.g. "Matches 3 open conversations". */
+  /** The dialog's live count, e.g. "80 open conversations match". */
   get matchesText(): Locator {
-    return this.createDialog.getByText(/^Matches \d+ open conversations?$/);
+    return this.createDialog.getByRole('heading', { level: 6 });
   }
 
   async openCreateDialog(): Promise<void> {
@@ -89,93 +87,72 @@ export class SavedViewsPage {
     await expect(this.createDialog).toBeVisible();
   }
 
-  /** Reload, open the view's edit dialog and check it shows exactly `view`. */
-  async expectSavedValues(view: SavedViewData): Promise<void> {
-    await this.open();
-    await this.chooseManageAction(view, 'Edit');
-    const dialog = this.editDialog;
-    await expect(this.ruleFieldButton(dialog)).toHaveAccessibleName(`${view.rule.field} Filter field`);
-    await expect(this.ruleOperatorButton(dialog)).toHaveAccessibleName(
-      `${view.rule.operator} Filter operator`,
-    );
-    await expect(dialog.getByRole('textbox', { name: 'Enter value' })).toHaveValue(view.rule.value);
-    await expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue(view.name);
-    await expect(dialog.getByRole('button', { name: 'View icon' })).toHaveText(view.icon.emoji);
-    await expect(dialog.getByRole('radio', { name: view.share, exact: true })).toBeChecked();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
+  /** Rename a view from its actions menu: the name turns into a text field in the sidebar. */
+  async renameView(view: Pick<SavedViewData, 'name'>, newName: string): Promise<void> {
+    await this.chooseAction(view, 'Rename');
+    const saved = waitForApiResponse(this.page, 'PUT', VIEW_PATH);
+    await this.page.keyboard.press('ControlOrMeta+A');
+    await this.page.keyboard.type(newName);
+    await this.page.keyboard.press('Enter');
+    expect((await saved).ok(), 'the server should save the new name').toBe(true);
   }
 
-  /** Change every part of the view `current` (its rule, name, icon and sharing) to `updated`. */
-  async editView(current: SavedViewData, updated: SavedViewData): Promise<void> {
-    await this.open();
-    await this.chooseManageAction(current, 'Edit');
-    await this.fillDialog(this.editDialog, updated);
-    const saved = waitForApiResponse(this.page, 'PUT', new RegExp(`^${ENDPOINTS.customViews}/[^/]+$`));
-    await this.editDialog.getByRole('button', { name: 'Save view' }).click();
-    expect((await saved).ok(), 'the server should save the changes').toBe(true);
-    await expect(this.editDialog).toBeHidden();
-  }
-
-  /** Delete the view from its Manage menu. The app deletes it at once and says so in a toast. */
-  async deleteView(view: SavedViewData): Promise<void> {
-    await this.open();
-    const deleted = waitForApiResponse(this.page, 'DELETE', new RegExp(`^${ENDPOINTS.customViews}/[^/]+$`));
-    await this.chooseManageAction(view, 'Delete');
+  /** Delete a view from its actions menu, confirming the dialog names it. */
+  async deleteView(view: Pick<SavedViewData, 'name'>): Promise<void> {
+    await this.chooseAction(view, 'Delete');
+    const confirm = this.page.getByRole('dialog', { name: 'Delete view?' });
+    await expect(confirm).toContainText(view.name);
+    const deleted = waitForApiResponse(this.page, 'DELETE', VIEW_PATH);
+    await confirm.getByRole('button', { name: 'Delete view' }).click();
     expect((await deleted).ok(), 'the server should delete the view').toBe(true);
-    await expect(this.page.getByRole('alert').filter({ hasText: 'View deleted' })).toBeVisible();
+    await expect(confirm).toBeHidden();
   }
 
-  private async chooseManageAction(view: SavedViewData, action: 'Edit' | 'Delete'): Promise<void> {
+  /** The actions button shows while the view's link is hovered. */
+  private async chooseAction(view: Pick<SavedViewData, 'name'>, action: 'Rename' | 'Delete'): Promise<void> {
     await collapseSetupGuide(this.page);
-    await this.page.getByRole('button', { name: `Manage ${view.name}`, exact: true }).click();
+    await this.sidebarLink(view).hover();
+    await this.sidebar.getByRole('button', { name: `${view.name} actions`, exact: true }).click();
     await this.page
-      .getByRole('menu', { name: `Manage ${view.name}` })
+      .getByRole('menu', { name: `${view.name} actions` })
       .getByRole('menuitem', { name: action })
       .click();
-    if (action === 'Edit') await expect(this.editDialog).toBeVisible();
   }
 
-  /** Fill the dialog's first rule, name, icon and sharing. The rule must already be there. */
-  private async fillDialog(dialog: Locator, view: SavedViewData): Promise<void> {
-    // The field picker's button has no size; its visible box is the wrapper around it.
-    await this.ruleFieldButton(dialog).locator('..').click();
+  /** Fill the name, who sees it, and one rule "<field> contains <value>". */
+  private async fillDialog(view: SavedViewData): Promise<void> {
+    const dialog = this.createDialog;
+    await dialog.getByRole('textbox', { name: 'Name' }).fill(view.name);
+    // The radio's input sits under the app's styled circle, which takes the click.
+    const share = dialog
+      .getByRole('radiogroup', { name: 'Who sees it' })
+      .getByRole('radio', { name: view.share });
+    // Agents are offered no choice: only check it when the choice is there.
+    if (await share.count()) {
+      await share.check({ force: true });
+      await expect(share).toBeChecked();
+    }
+
+    await dialog.getByRole('button', { name: 'Add rule' }).click();
+    // The field picker's button has no size; its visible box (a group) takes the click.
+    const fieldButton = dialog.getByRole('button', { name: /Filter field$/ }).last();
+    await dialog
+      .getByRole('group')
+      .filter({ has: this.page.getByRole('button', { name: /Filter field$/ }) })
+      .last()
+      .click();
     await this.page
-      .getByRole('listbox', { name: /Filter field/ })
+      .getByRole('dialog', { name: 'Filter field' })
       .getByRole('option', { name: view.rule.field, exact: true })
       .click();
-    await expect(this.ruleFieldButton(dialog)).toHaveAccessibleName(`${view.rule.field} Filter field`);
-
-    await this.ruleOperatorButton(dialog).click();
-    await this.page
-      .getByRole('listbox', { name: 'Filter operator' })
-      .getByRole('option', { name: view.rule.operator, exact: true })
-      .click();
-    await dialog.getByRole('textbox', { name: 'Enter value' }).fill(view.rule.value);
-
-    await dialog.getByRole('textbox', { name: 'Name' }).fill(view.name);
-
-    await dialog.getByRole('button', { name: 'View icon' }).click();
-    await this.page.getByRole('searchbox', { name: 'Search emoji' }).fill(view.icon.search);
-    await this.page
-      .getByRole('listbox', { name: /Emoji grid/ })
-      .getByRole('option', { name: view.icon.emoji, exact: true })
-      .click();
-    await expect(dialog.getByRole('button', { name: 'View icon' })).toHaveText(view.icon.emoji);
-
-    // The real radio input sits under the app's styled circle, so click the option's label.
-    await dialog
-      .getByRole('radiogroup', { name: 'Who can see this view' })
-      .getByText(view.share, { exact: true })
-      .click();
-    await expect(dialog.getByRole('radio', { name: view.share, exact: true })).toBeChecked();
+    await expect(fieldButton).toHaveAccessibleName(`${view.rule.field} Filter field`);
+    await expect(dialog.getByRole('button', { name: /Select operator$/ }).last()).toHaveText(
+      view.rule.operator,
+    );
+    await dialog.getByRole('textbox', { name: 'Enter value' }).last().fill(view.rule.value);
   }
+}
 
-  private ruleFieldButton(dialog: Locator): Locator {
-    return dialog.getByRole('button', { name: /Filter field$/ }).first();
-  }
-
-  private ruleOperatorButton(dialog: Locator): Locator {
-    return dialog.getByRole('button', { name: /Filter operator$/ }).first();
-  }
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -22,7 +22,8 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
     cleanup.add(`tag "${tag.name}"`, () => tagsApi.deleteIfExists(tag.id));
     // Any stage but the default, so the saved stage can only be the one chosen in the dialog.
     const stage = pickRandom((await lifecyclesApi.openStages()).filter((s) => !s.isDefault));
-    const contact = buildContact();
+    // The dialog has no address field.
+    const { address: _noAddressField, ...contact } = buildContact();
     const referredBy = buildContact().firstName;
 
     await test.step('open Contacts → Add Contact', async () => {
@@ -33,7 +34,6 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
       await contactsPage.createDialog.fill({
         ...contact,
         lifecycle: stage.name,
-        origin: 'Referral',
         referredBy,
         tags: [tag.name],
       });
@@ -57,7 +57,7 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
       expect((await response.json()).data).toMatchObject({
         ...contact,
         lifecycleId: stage.id,
-        origin: 'referral',
+        source: 'referral',
         referredByName: referredBy,
         tags: [tag.id],
       });
@@ -93,10 +93,9 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
     });
     await test.step(`the server stored it as a manual contact in "${defaultStage.name}"`, async () => {
       const stored = (await (await contactsApi.get(created.id)).json()).data;
-      expect(stored).toMatchObject({ firstName, origin: 'manual', lifecycleId: defaultStage.id });
+      expect(stored).toMatchObject({ firstName, source: 'manual', lifecycleId: defaultStage.id });
       // The empty fields are sent as "" or null; either way they hold nothing.
-      for (const field of ['lastName', 'phone', 'email', 'address'] as const)
-        expect(stored[field] || null).toBeNull();
+      for (const field of ['lastName', 'phone', 'email'] as const) expect(stored[field] || null).toBeNull();
     });
   });
 
@@ -109,17 +108,12 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
       await contactsPage.open();
       await contactsPage.createDialog.open();
     });
-    await test.step('fill in everything except the first name and press Create contact', async () => {
+    await test.step('fill in everything except the first name and press Add contact', async () => {
       await contactsPage.createDialog.fill(rest);
       await contactsPage.createDialog.createButton.click();
     });
-    await test.step('the browser flags the first name as missing and the dialog stays open', async () => {
-      // The field is a native required field: the browser shows its own message, outside the page.
-      expect(
-        await contactsPage.createDialog.firstNameInput.evaluate(
-          (input: HTMLInputElement) => input.validity.valueMissing,
-        ),
-      ).toBe(true);
+    await test.step('the first name shows "Enter a valid first name" and the dialog stays open', async () => {
+      await expect(contactsPage.createDialog.invalidFirstNameError).toBeVisible();
       await expect(contactsPage.createDialog.root).toBeVisible();
       await expect(contactsPage.createDialog.emailInput).toHaveValue(rest.email);
     });
@@ -136,7 +130,7 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
       await contactsPage.open();
       await contactsPage.createDialog.open();
     });
-    await test.step('fill in the form with an invalid email and press Create contact', async () => {
+    await test.step('fill in the form with an invalid email and press Add contact', async () => {
       await contactsPage.createDialog.fill(contact);
       await contactsPage.createDialog.createButton.click();
     });
@@ -159,7 +153,7 @@ test.describe('Contacts → Create contact', { tag: ['@contacts'] }, () => {
       await contactsPage.open();
       await contactsPage.createDialog.open();
     });
-    await test.step('fill in the form with a too-short phone number and press Create contact', async () => {
+    await test.step('fill in the form with a too-short phone number and press Add contact', async () => {
       await contactsPage.createDialog.fill(contact);
       await contactsPage.createDialog.createButton.click();
     });

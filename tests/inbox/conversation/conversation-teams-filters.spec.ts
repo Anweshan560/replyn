@@ -3,7 +3,7 @@ import { toSavedFilePayload, toTeamPayload } from '../../../api/SettingsApis';
 import { buildSavedFile, buildSavedView, buildTeam } from '../../../utils/testData';
 
 /**
- * Team inboxes, Advanced filters and Saved files in the inbox, on the shared Instagram test
+ * Team inboxes, views and Saved files in the inbox, on the shared Instagram test
  * conversation (put back as it was afterwards). Nothing is sent to Instagram: the saved file is
  * attached and then removed again.
  */
@@ -19,7 +19,7 @@ test.describe('Inbox teams, filters and saved files', { tag: ['@inbox'] }, () =>
     testConversation,
     cleanup,
   }) => {
-    const { contactId, username } = testConversation;
+    const { contactId } = testConversation;
     const team = await teamsApi.createRecord(toTeamPayload(buildTeam()));
     cleanup.add(`team ${team.name}`, () => teamsApi.deleteIfExists(team.id));
     await inboxApi.updateRecord(contactId, { assignedTeamId: team.id, assignedUserId: null });
@@ -30,11 +30,11 @@ test.describe('Inbox teams, filters and saved files', { tag: ['@inbox'] }, () =>
     });
     await test.step(`Teams → "${team.name}": the conversation is listed`, async () => {
       await conversationPage.openTeamList(team.name);
-      await expect(conversationPage.listRow(username)).toBeVisible();
+      await expect(conversationPage.listRow(testConversation.name)).toBeVisible();
     });
   });
 
-  test('should save an Advanced filters rule as a view that lists the conversation', async ({
+  test('should save a New view rule as a view that lists the conversation', async ({
     page,
     conversationPage,
     savedViewsPage,
@@ -46,24 +46,23 @@ test.describe('Inbox teams, filters and saved files', { tag: ['@inbox'] }, () =>
     const view = {
       ...buildSavedView(),
       rule: { field: 'First name' as const, operator: 'contains' as const, value: username },
-      share: 'Just me' as const,
+      share: 'Only me' as const,
     };
     await conversationPage.open(contactId);
 
-    const id = await test.step(`Advanced filters → "First name contains ${username}" → save as a view`, () =>
+    const id = await test.step(`New view → "First name contains ${username}" → create`, () =>
       savedViewsPage.createView(view, {
-        from: 'Advanced filters',
         onFilled: async () => {
           // The live count only includes open conversations; ours is one of them.
-          await expect(savedViewsPage.matchesText).not.toHaveText(/Matches 0 /);
+          await expect(savedViewsPage.matchesText).not.toHaveText(/^0 /);
         },
       }));
     cleanup.add(`view ${view.name}`, () => customViewsApi.deleteIfExists(id));
 
     await test.step('open the view from the sidebar: the conversation is listed', async () => {
       await savedViewsPage.sidebarLink(view).click();
-      await expect(page).toHaveURL(new RegExp(`customView=${id}`));
-      await expect(conversationPage.listRow(username)).toBeVisible();
+      await expect(page).toHaveURL((url) => url.searchParams.get('segment') === id);
+      await expect(conversationPage.listRow(testConversation.name)).toBeVisible();
     });
   });
 
