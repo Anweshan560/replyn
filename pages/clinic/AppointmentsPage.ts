@@ -1,10 +1,29 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { ENDPOINTS } from '../../api/ResourceApi';
-import type { Appointment, AppointmentStatusLabel } from '../../api/AppointmentsApi';
-import { waitForApiResponse } from '../../utils/network';
+import {
+  APPOINTMENT_STATUSES,
+  type Appointment,
+  type AppointmentStatusLabel,
+} from '../../api/AppointmentsApi';
+import { waitForApiResponse, waitForListResponse } from '../../utils/network';
 import { toDateParam, type PatientData } from '../../utils/testData';
 
 export type CalendarView = 'Day' | 'Week' | 'Month';
+
+/**
+ * The Catch up queues of the side panel, and the API flag each one lists by (all "true"). The
+ * fourth queue, "Not in the EMR", lists by crmStatus=not-synced instead.
+ */
+export const CATCH_UP_QUEUES = {
+  'Needs an answer': 'needsAnswer',
+  'Not rebooked': 'notRebooked',
+  'Missing details': 'missingDetails',
+} as const;
+
+export type CatchUpQueue = keyof typeof CATCH_UP_QUEUES;
+
+/** The statuses the All tab asks for, in the order the page sends them. */
+const ALL_STATUSES_PARAM = Object.values(APPOINTMENT_STATUSES).join(',');
 
 /** What the New appointment dialog is filled with; leave a field out to keep its default. */
 export type NewAppointment = {
@@ -103,6 +122,134 @@ export class AppointmentsPage {
     await this.card(treatmentName).click();
     await this.page.getByRole('dialog').getByRole('button', { name: 'Open', exact: true }).click();
     await expect(this.panel.root).toBeVisible();
+  }
+
+  // --- Filters ---------------------------------------------------------------------------------
+
+  /**
+   * Open the List view on `day`, showing only `doctorIds`, and wait for its appointments. Tests
+   * pass their own doctors so the list holds only their bookings.
+   */
+  async openList(day: Date, doctorIds: string[]): Promise<void> {
+    const doctors = doctorIds.join(',');
+    const params = new URLSearchParams({ view: 'list', date: toDateParam(day), doctor: doctors });
+    const loaded = waitForListResponse(this.page, ENDPOINTS.appointments, { doctorIds: doctors });
+    await this.page.goto(`/appointments?${params}`);
+    expect((await loaded).ok(), 'the appointments should load').toBe(true);
+    await this.collapseSetupGuide();
+  }
+
+  /** The List view's table (the Catch up queues use the same one). */
+  get listGrid(): Locator {
+    return this.main.getByRole('grid', { name: 'Appointments' });
+  }
+
+  /** A row of the List view, found by the patient's name. */
+  listRow(patientName: string): Locator {
+    return this.listGrid.getByRole('row', { name: new RegExp(escapeRegExp(patientName)) });
+  }
+
+  /** The List view's row shown when nothing matches the filters. */
+  get emptyListRow(): Locator {
+    return this.listGrid.getByRole('row', { name: /^No appointments found/ });
+  }
+
+  /** A status tab above the list or calendar; its name ends with a count when it has any. */
+  statusTab(label: 'All' | AppointmentStatusLabel): Locator {
+    return this.page
+      .getByRole('tablist', { name: 'Status' })
+      .getByRole('tab', { name: new RegExp(`^${escapeRegExp(label)}( \\d+)?$`) });
+  }
+
+  /** Pick a status tab and wait for the list to reload with that status. */
+  async filterByStatus(label: 'All' | AppointmentStatusLabel): Promise<void> {
+    const statuses = label === 'All' ? ALL_STATUSES_PARAM : APPOINTMENT_STATUSES[label];
+    const loaded = waitForListResponse(this.page, ENDPOINTS.appointments, { statuses });
+    await this.statusTab(label).click();
+    expect((await loaded).ok(), 'the filtered appointments should load').toBe(true);
+  }
+
+  /**
+   * A doctor in the side panel's Doctors list. Its name is their initials, their name and, when
+   * they have bookings that day, the count, e.g. "EK Dr. Erwin Kertzmann 1".
+   */
+  doctorFilter(doctorName: string): Locator {
+    return this.page.getByRole('button', {
+      name: new RegExp(`^[A-Z]{1,2} ${escapeRegExp(doctorName)}( \\d+)?$`),
+    });
+  }
+
+  /**
+   * Click a doctor in the side panel. Each one is a toggle: a doctor who is shown is hidden, one
+   * who is hidden is shown again (from "All doctors", clicking one shows only them). Waits for
+   * the reload asking for `expectedDoctorIds` (the ids left shown, comma-separated, or a pattern).
+   */
+  async toggleDoctor(doctorName: string, expectedDoctorIds: string | RegExp): Promise<void> {
+    const loaded = this.page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      if (url.pathname !== ENDPOINTS.appointments) return false;
+      const doctorIds = url.searchParams.get('doctorIds') ?? '';
+      return typeof expectedDoctorIds === 'string'
+        ? doctorIds === expectedDoctorIds
+        : expectedDoctorIds.test(doctorIds) && url.searchParams.has('statuses');
+    });
+    await this.doctorFilter(doctorName).click();
+    expect((await loaded).ok(), "the doctors' appointments should load").toBe(true);
+  }
+
+  /** The "Booked by" choice: Team (people), Novy (the AI) and EMR (synced from the EMR). */
+  get bookedByButton(): Locator {
+    return this.page.getByRole('button', { name: /^Booked by/ });
+  }
+
+  /**
+   * Untick one "Booked by" source and wait for the reload with the `remaining` ones (as the API
+   * names them, e.g. "ai,crm"), then close the list.
+   */
+  async hideBookedBy(source: 'Team' | 'Novy' | 'EMR', remaining: string): Promise<void> {
+    await this.bookedByButton.click();
+    const loaded = waitForListResponse(this.page, ENDPOINTS.appointments, { bookedBy: remaining });
+    await this.page
+      .getByRole('listbox', { name: 'Booked by' })
+      .getByRole('option', { name: new RegExp(`^${source}`) })
+      .click();
+    expect((await loaded).ok(), 'the filtered appointments should load').toBe(true);
+    await this.page.keyboard.press('Escape');
+  }
+
+  /** "Hide doctors with no bookings" above the calendar. */
+  get hideEmptyDoctorsSwitch(): Locator {
+    return this.page.getByRole('switch', { name: 'Hide doctors with no bookings' });
+  }
+
+  /** Turn "Hide doctors with no bookings" on. */
+  async hideEmptyDoctors(): Promise<void> {
+    // The switch is a tiny box; its label next to it takes the click.
+    await this.page.getByText('Hide doctors with no bookings', { exact: true }).click();
+    await expect(this.hideEmptyDoctorsSwitch).toBeChecked();
+  }
+
+  /**
+   * A Catch up queue in the side panel, e.g. "Needs an answer 79" (past visits with no recorded
+   * result). Its name ends with the count when it has any.
+   */
+  catchUpQueue(name: CatchUpQueue): Locator {
+    return this.page.getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}( \\d+)?$`) });
+  }
+
+  /** Open a Catch up queue and wait for its first page. */
+  async openCatchUpQueue(name: CatchUpQueue): Promise<void> {
+    const loaded = waitForListResponse(this.page, ENDPOINTS.appointments, {
+      [CATCH_UP_QUEUES[name]]: 'true',
+    });
+    await this.catchUpQueue(name).click();
+    expect((await loaded).ok(), 'the queue should load').toBe(true);
+    await expect(this.page.getByRole('heading', { name, level: 5 })).toBeVisible();
+  }
+
+  /** The search box of an open Catch up queue. */
+  get queueSearchBox(): Locator {
+    return this.page.getByRole('searchbox', { name: 'Search patients' });
   }
 
   /** The setup guide floats over the bottom right of the page; fold it away when it is open. */
