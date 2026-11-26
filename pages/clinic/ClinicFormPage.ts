@@ -30,7 +30,7 @@ export abstract class ClinicFormPage<TData extends ClinicRecordData> extends Cli
     super(page, section);
     this.nameInput = page.getByRole('textbox', { name: 'Name', exact: true });
     this.websiteInput = page.getByRole('textbox', { name: 'Page on your website' });
-    this.emrIdInput = page.getByRole('textbox', { name: 'ID in your EMR' });
+    this.emrIdInput = page.getByRole('textbox', { name: 'ID in the EMR' });
     // CSS on purpose: the rich-text editor is a plain <div contenteditable> with no role,
     // label or placeholder attribute, so no getBy* locator can reach it. The form has only one.
     this.descriptionEditor = page.locator('.ProseMirror[contenteditable="true"]');

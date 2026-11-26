@@ -21,7 +21,6 @@ export class ConversationPage {
   readonly closeButton: Locator;
   readonly reopenButton: Locator;
   readonly unsnoozeButton: Locator;
-  readonly editFollowUpButton: Locator;
   readonly assignToMeButton: Locator;
   readonly unassignMeButton: Locator;
   readonly conversationActions: Locator;
@@ -37,17 +36,18 @@ export class ConversationPage {
   ) {
     this.replyBox = page.getByPlaceholder(/^Reply to /);
     this.noteBox = page.getByPlaceholder(/^Add a private note/);
-    this.closeButton = this.button('Close conversation');
+    // An open conversation offers Resolve (was "Close conversation" before the 2026-11-25 redesign).
+    this.closeButton = this.button('Resolve');
     this.reopenButton = this.button('Reopen conversation');
-    this.unsnoozeButton = this.button('Unsnooze conversation');
-    this.editFollowUpButton = this.button('Edit follow-up');
+    // Renamed in the 2026-11-25 redesign (was "Unsnooze conversation").
+    this.unsnoozeButton = this.button('Unsnooze');
     this.assignToMeButton = this.button('Assign to me');
     this.unassignMeButton = this.button('Unassign me');
     this.conversationActions = page.getByRole('group', { name: 'Conversation actions' });
     this.closeDialog = page.getByRole('dialog', { name: 'Close conversation' });
     this.snoozeDialog = page.getByRole('dialog', { name: 'Snooze conversation' });
     this.followUpDialog = page.getByRole('dialog', { name: 'Mark as follow up' });
-    this.editFollowUpDialog = page.getByRole('dialog', { name: 'Edit follow-up' });
+    this.editFollowUpDialog = page.getByRole('dialog', { name: 'Edit follow up' });
     this.inboxNavigation = page.getByRole('navigation', { name: 'Inbox navigation' });
   }
 
@@ -85,18 +85,6 @@ export class ConversationPage {
       await this.page.mouse.wheel(0, direction === 'up' ? -3000 : 3000);
       await this.page.waitForTimeout(800);
     }
-  }
-
-  /**
-   * More options → Search messages: search this conversation's messages. The thread jumps to the
-   * first match and highlights it; the search bar shows e.g. "1/1".
-   */
-  async searchMessages(query: string): Promise<void> {
-    await this.button('More options').click();
-    await this.page.getByRole('menuitem', { name: 'Search messages' }).click();
-    const search = this.page.getByRole('searchbox', { name: 'Search messages' });
-    await search.fill(query);
-    await search.press('Enter');
   }
 
   /**
@@ -227,12 +215,33 @@ export class ConversationPage {
     expect((await saved).ok(), 'the follow-up should be saved').toBe(true);
   }
 
-  /** Open the header's follow-up and press Remove. */
-  async removeFollowUp(): Promise<void> {
-    await this.editFollowUpButton.click();
-    const removed = waitForApiResponse(this.page, 'DELETE', /\/v1\/contacts\/[^/]+\/follow-up$/);
-    await this.editFollowUpDialog.getByRole('button', { name: 'Remove' }).click();
-    expect((await removed).ok(), 'the follow-up should be removed').toBe(true);
+  /**
+   * The conversation's Follow-ups tab. Since the 2026-11-25 redesign the follow-up is shown here
+   * (and on the list row, which moves out of view as the list re-sorts), not in the header.
+   */
+  async openFollowUps(): Promise<void> {
+    await this.page.getByRole('tab', { name: /^Follow-ups/ }).click();
+  }
+
+  /** In the Follow-ups tab: the active follow-up's "Mark follow-up done" button. */
+  get markFollowUpDoneButton(): Locator {
+    return this.button('Mark follow-up done');
+  }
+
+  /**
+   * In the Follow-ups tab: press Done on the active follow-up, which clears it. (The tab offers only
+   * Done and Snooze; Remove is on the list row's follow-up, which moves out of view.)
+   */
+  async completeFollowUp(): Promise<void> {
+    await this.openFollowUps();
+    const cleared = this.page.waitForResponse(
+      (response) =>
+        /\/v1\/contacts\/[^/]+\/follow-up/.test(new URL(response.url()).pathname) &&
+        response.request().method() !== 'GET' &&
+        response.request().method() !== 'OPTIONS',
+    );
+    await this.markFollowUpDoneButton.click();
+    expect((await cleared).ok(), 'the follow-up should be cleared').toBe(true);
   }
 
   // --- Contact panel: assignee and tags -----------------------------------------------------------
@@ -271,7 +280,8 @@ export class ConversationPage {
 
   /** Switch to one of the inbox's lists in the sidebar. */
   async openList(list: InboxList): Promise<void> {
-    await this.inboxNavigation.getByRole('link', { name: new RegExp(`^${list}( \\d+)?$`) }).click();
+    // The link names end with up to two counts since the 2026-11-25 redesign, e.g. "Unassigned 7 8".
+    await this.inboxNavigation.getByRole('link', { name: new RegExp(`^${list}( \\d+)*$`) }).click();
   }
 
   /** Show open, closed or snoozed conversations in the list. */
@@ -287,23 +297,24 @@ export class ConversationPage {
   }
 
   /**
-   * Quick filters: pick one value of a field (e.g. Channel → "testqaadmin") and Apply. The field's
-   * own dropdown button is 0 px wide, so the click goes to the value shown in the field.
+   * Filter conversations: pick a field (e.g. Channel) and tick one of its values (e.g.
+   * "testqaadmin"). The list reloads as soon as the value is ticked. Replaced Quick filters in the
+   * 2026-11-25 redesign.
    */
-  async applyQuickFilter(field: 'Channel' | 'Assignee' | 'Tags', option: string): Promise<void> {
-    await this.button('Quick filters').click();
-    const dialog = this.page.getByRole('dialog', { name: 'Quick filters' });
-    const trigger = dialog.getByRole('group').filter({ has: this.page.getByRole('button', { name: field }) });
-    await trigger.locator('[data-slot="autocomplete-value"]').click();
-    const options = this.page.getByRole('listbox', { name: `Suggestions ${field}` });
-    await options.getByRole('option', { name: option }).click();
-    // The options stay open over the Apply button; Escape closes them, not the dialog.
-    await this.page.keyboard.press('Escape');
-    await expect(options).toBeHidden();
-    await expect(trigger).toContainText(option);
+  async applyFilter(field: 'Channel' | 'Assignee' | 'Tags', option: string): Promise<void> {
+    await this.button('Filter conversations').click();
+    await this.page
+      .getByRole('dialog', { name: 'Filter conversations' })
+      .getByRole('menuitem', { name: field, exact: true })
+      .first()
+      .click();
     const listed = waitForApiResponse(this.page, 'POST', `${ENDPOINTS.conversations}/search`);
-    await dialog.getByRole('button', { name: 'Apply' }).click();
+    await this.page
+      .getByRole('dialog', { name: field })
+      .getByRole('menuitemcheckbox', { name: option, exact: true })
+      .click();
     expect((await listed).ok(), 'the filtered list should load').toBe(true);
+    await this.page.keyboard.press('Escape');
   }
 
   /** Teams in the sidebar: expand the section and open the team's own list. */
@@ -358,18 +369,26 @@ export class ConversationPage {
     return this.expectSent(() => this.button('Send').click());
   }
 
-  /** More options → "Opt out of broadcasts" or "Opt back in to broadcasts". */
+  /**
+   * The contact panel's More actions button. Since the 2026-11-25 redesign the conversation header
+   * has no More options menu; opting out moved here.
+   */
+  private get panelMoreActions(): Locator {
+    return this.page.getByRole('complementary').last().getByRole('button', { name: 'More actions' });
+  }
+
+  /** Contact panel → More actions → "Opt out of broadcasts" or "Opt back in to broadcasts". */
   async setBroadcastOptOut(optOut: boolean): Promise<void> {
-    await this.button('More options').click();
+    await this.panelMoreActions.click();
     const item = optOut ? 'Opt out of broadcasts' : 'Opt back in to broadcasts';
     await this.expectSaved(() => this.page.getByRole('menuitem', { name: item }).click());
   }
 
-  /** The items of the header's More options menu, e.g. "Opt back in to broadcasts". */
+  /** The items of the contact panel's More actions menu, e.g. "Opt back in to broadcasts". */
   async moreOptionsItems(): Promise<string[]> {
-    await this.button('More options').click();
+    await this.panelMoreActions.click();
     const items = await this.page
-      .getByRole('menu', { name: 'More options' })
+      .getByRole('menu', { name: 'More actions' })
       .getByRole('menuitem')
       .allInnerTexts();
     await this.page.keyboard.press('Escape');

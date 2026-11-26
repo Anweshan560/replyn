@@ -374,7 +374,9 @@ test.describe('Appointments API', { tag: ['@clinic', '@appointments'] }, () => {
     });
   });
 
-  test.describe('recording the visit', () => {
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.describe.fixme('recording the visit', () => {
     test('should mark the visit attended and paid, creating an invoice and a receipt', async ({
       appointmentsApi,
       billingApi,

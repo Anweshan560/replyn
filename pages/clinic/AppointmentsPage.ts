@@ -24,7 +24,7 @@ export type NewAppointment = {
 export class AppointmentsPage {
   readonly main: Locator;
   readonly todayButton: Locator;
-  /** "Friday October 30 2026", "Week of October 30 2026" or the month. */
+  /** The day shown, in the side panel, e.g. "Wednesday, 25 November". */
   readonly dateHeading: Locator;
   readonly newAppointmentButton: Locator;
   readonly dialog: NewAppointmentDialog;
@@ -32,8 +32,9 @@ export class AppointmentsPage {
 
   constructor(private readonly page: Page) {
     this.main = page.getByRole('main');
-    this.todayButton = this.main.getByRole('button', { name: 'Today' });
-    this.dateHeading = this.main.getByRole('heading', { level: 5 }).first();
+    // Since the 2026-11-25 redesign the date controls live in the side panel, outside main.
+    this.todayButton = page.getByRole('button', { name: 'Go to today' });
+    this.dateHeading = page.getByRole('heading', { level: 5 }).first();
     this.newAppointmentButton = page.getByRole('button', { name: 'New appointment' });
     this.dialog = new NewAppointmentDialog(page);
     this.panel = new AppointmentPanel(page);
@@ -67,19 +68,22 @@ export class AppointmentsPage {
     await this.collapseSetupGuide();
   }
 
-  /** The Day, Week or Month button; only shown while the calendar shows a single doctor. */
+  /** The Day, Week or Month choice ("Range"); only shown while the calendar shows a single doctor. */
   viewButton(view: CalendarView): Locator {
-    return this.main.getByRole('button', { name: view, exact: true });
+    return this.page
+      .getByRole('radiogroup', { name: 'Range' })
+      .getByRole('radio', { name: view, exact: true });
   }
 
   /** Switch between Day, Week and Month. */
   async switchView(view: CalendarView): Promise<void> {
-    await this.viewButton(view).click();
+    // The radio's input sits under its drawn label, which takes the click.
+    await this.viewButton(view).check({ force: true });
   }
 
   /** A doctor's column title in Day view. */
   doctorColumn(doctorName: string): Locator {
-    return this.main.getByRole('heading', { name: doctorName, exact: true, level: 6 });
+    return this.main.getByText(doctorName, { exact: true });
   }
 
   /**
@@ -91,9 +95,13 @@ export class AppointmentsPage {
     return this.main.getByRole('button', { name: new RegExp(escapeRegExp(treatmentName)) }).first();
   }
 
-  /** Click an appointment on the calendar and wait for its panel. */
+  /**
+   * Click an appointment on the calendar, then Open in the summary that pops up, and wait for the
+   * full appointment.
+   */
   async openAppointment(treatmentName: string): Promise<void> {
     await this.card(treatmentName).click();
+    await this.page.getByRole('dialog').getByRole('button', { name: 'Open', exact: true }).click();
     await expect(this.panel.root).toBeVisible();
   }
 
@@ -121,7 +129,7 @@ export class NewAppointmentDialog {
     this.lastNameInput = this.root.getByRole('textbox', { name: 'Last name' });
     this.phoneInput = this.root.getByRole('textbox', { name: 'Phone' });
     this.notesInput = this.root.getByRole('textbox', { name: 'Notes' });
-    this.createButton = this.root.getByRole('button', { name: 'Create', exact: true });
+    this.createButton = this.root.getByRole('button', { name: 'Book appointment', exact: true });
     this.cancelButton = this.root.getByRole('button', { name: 'Cancel' });
     this.closeButton = this.root.getByRole('button', { name: 'Close' });
   }
@@ -165,21 +173,16 @@ export class NewAppointmentDialog {
     await expect(this.root.getByRole('button', { name: buttonName })).toContainText(option);
   }
 
-  /** Pick `day` in the date picker, moving to the next month when needed. */
+  /** Type `day` into the date field (month, day and year segments), as a keyboard user does. */
   private async chooseDay(day: Date): Promise<void> {
-    // The date button and its pop-up are both named after the chosen day, e.g. "Fri, Oct 30, 2026".
-    // Scope to the pop-up: the page's Filters panel has a month calendar with the same day names.
-    const shownDate = /^\w{3}, \w{3} \d{1,2}, \d{4}$/;
-    await this.root.getByRole('button', { name: shownDate }).click();
-    const picker = this.page.getByRole('dialog', { name: shownDate });
-    // Each day is a button named like "Monday, November 2, 2026".
-    const dayButton = picker.getByRole('button', { name: longDate(day), exact: true });
-    // .first(): the month's Next arrow; the pop-up has a second "Next" further down.
-    if (!(await dayButton.isVisible())) await picker.getByRole('button', { name: 'Next' }).first().click();
-    await dayButton.click();
-    await picker.getByRole('button', { name: 'Done' }).click();
-    await expect(picker).toBeHidden();
-    await expect(this.root.getByRole('button', { name: shortDate(day), exact: true })).toBeVisible();
+    const date = this.root.getByRole('group', { name: 'Date' });
+    await date.getByRole('spinbutton', { name: /^month/ }).click();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    await this.page.keyboard.type(`${pad(day.getMonth() + 1)}${pad(day.getDate())}${day.getFullYear()}`);
+    await expect(date.getByRole('spinbutton', { name: /^day/ })).toHaveAttribute(
+      'aria-valuenow',
+      String(day.getDate()),
+    );
   }
 }
 
@@ -194,7 +197,12 @@ export class AppointmentPanel {
   readonly paymentSteps: Locator;
 
   constructor(private readonly page: Page) {
-    this.root = page.getByRole('dialog', { name: 'Appointment' });
+    // Named after the patient since the 2026-11-25 redesign; the full view is the dialog with
+    // More actions (the summary that pops up first has none).
+    this.root = page
+      .getByRole('dialog')
+      .filter({ has: page.getByRole('button', { name: 'More actions' }) })
+      .last();
     this.notesInput = this.root.getByRole('textbox', { name: 'Notes' });
     this.saveButton = this.root.getByRole('button', { name: 'Save', exact: true });
     // .first(): the menu button is nested in a second button with the same name.
@@ -292,21 +300,6 @@ export class AppointmentPanel {
     await radio.locator('xpath=ancestor::label[1]').click();
     await expect(radio).toBeChecked();
   }
-}
-
-/** "Monday, November 2, 2026": the date picker's name for a day. */
-function longDate(day: Date): string {
-  return day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-}
-
-/** "Mon, Nov 2, 2026": what the dialog's date button shows. */
-function shortDate(day: Date): string {
-  return day.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function escapeRegExp(text: string): string {

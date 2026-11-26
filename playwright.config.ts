@@ -23,13 +23,6 @@ const EXCLUSIVE_TESTS =
   /(settings[\\/](organization|workspace|hours|sla|assignment|ai|lifecycle)|reports[\\/]numbers)[\\/].*\.spec\.ts/;
 
 /**
- * Settings the workspace has only one of (today: the Wrap-Up outcomes). Tests change them and put
- * them back, so they run one at a time in their own project, alongside the parallel ones. Unlike
- * the exclusive tests they don't affect other tests, so they run in every normal run.
- */
-const WORKSPACE_SETTINGS_TESTS = /settings[\\/]wrap-up[\\/].*\.spec\.ts/;
-
-/**
  * Permission tests run logged in as the limited Agent account (tests/setup/agent.setup.ts), UI and
  * API alike. Without TEST_AGENT_USERNAME / TEST_AGENT_PASSWORD they are skipped.
  */
@@ -87,6 +80,11 @@ export default defineConfig({
   // A stray test.only must never silently shrink the CI run.
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
+  // When the app changes under the tests (e.g. the 2026-11-25 sidebar redesign), most tests fail
+  // by waiting out their full timeout, three times each. That ran past the job's 120-minute limit
+  // and GitHub cancelled the run ("The operation was canceled"), with no report and nothing in the
+  // failed tests sheet. Stopping after this many failures gives a red run with a report instead.
+  maxFailures: isCI ? 25 : undefined,
   // The beta server can take a few seconds to show new data, so allow 10s per check.
   expect: { timeout: 10_000 },
   // Total time per test. UI tests load the app up to 4 times, and on a busy machine each load can
@@ -137,14 +135,7 @@ export default defineConfig({
     {
       name: 'smoke',
       ...tagFilter(/@smoke/),
-      testIgnore: [
-        API_TESTS,
-        EXCLUSIVE_TESTS,
-        WORKSPACE_SETTINGS_TESTS,
-        PERMISSION_TESTS,
-        INBOX_CONVERSATION_TESTS,
-        VISUAL_TESTS,
-      ],
+      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS, VISUAL_TESTS],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -152,7 +143,7 @@ export default defineConfig({
       ? Object.entries(CROSS_BROWSERS).map(([name, device]) => ({
           name,
           ...tagFilter(/@smoke/),
-          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, VISUAL_TESTS],
+          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, VISUAL_TESTS],
           dependencies: ['setup'],
           use: { ...device, storageState: AUTH_FILE },
         }))
@@ -172,14 +163,7 @@ export default defineConfig({
     {
       name: 'ui',
       ...tagFilter(undefined, /@smoke/),
-      testIgnore: [
-        API_TESTS,
-        EXCLUSIVE_TESTS,
-        WORKSPACE_SETTINGS_TESTS,
-        PERMISSION_TESTS,
-        INBOX_CONVERSATION_TESTS,
-        VISUAL_TESTS,
-      ],
+      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS, VISUAL_TESTS],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -188,7 +172,7 @@ export default defineConfig({
       name: 'api',
       testMatch: API_TESTS,
       ...tagFilter(),
-      testIgnore: [EXCLUSIVE_TESTS, WORKSPACE_SETTINGS_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS],
+      testIgnore: [EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS],
       // agent-setup: some API tests also act as the Agent (the `agent` fixture).
       dependencies: ['setup', 'agent-setup'],
       use: {
@@ -197,15 +181,6 @@ export default defineConfig({
         headless: true,
         launchOptions: { slowMo: 0 },
       },
-    },
-    // Workspace-wide settings (UI and API): one test at a time, next to the parallel projects.
-    {
-      name: 'workspace-settings',
-      testMatch: WORKSPACE_SETTINGS_TESTS,
-      ...tagFilter(),
-      dependencies: ['setup'],
-      workers: 1,
-      use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
     // Before the inbox tests: switch on the workflow that the next morning's message should start.
     // Its teardown runs after them and closes the test conversation (tests/inbox/setup).

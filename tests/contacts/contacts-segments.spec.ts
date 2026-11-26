@@ -24,7 +24,7 @@ test.describe('Contacts → segments and filters', { tag: ['@contacts'] }, () =>
     const segmentName = buildSegmentName();
     const filters = contactsPage.filtersDialog;
 
-    await test.step('open Contacts → Filter contacts', async () => {
+    await test.step('open Contacts → New segment', async () => {
       await contactsPage.open();
       await filters.open();
     });
@@ -63,7 +63,7 @@ test.describe('Contacts → segments and filters', { tag: ['@contacts'] }, () =>
     });
   });
 
-  test('should create a segment once it has a name, then delete it', async ({
+  test('should create a segment once it has a name and a rule, then delete it', async ({
     page,
     contactsPage,
     segmentsApi,
@@ -71,7 +71,7 @@ test.describe('Contacts → segments and filters', { tag: ['@contacts'] }, () =>
   }) => {
     const segmentName = buildSegmentName();
     const dialog = contactsPage.newSegmentDialog;
-    const createButton = dialog.getByRole('button', { name: 'Create', exact: true });
+    const createButton = dialog.getByRole('button', { name: 'Create segment', exact: true });
 
     await test.step('open Contacts → New segment', async () => {
       await contactsPage.open();
@@ -82,8 +82,13 @@ test.describe('Contacts → segments and filters', { tag: ['@contacts'] }, () =>
       await expect(createButton).toBeDisabled();
     });
 
-    await test.step('type a name: Create becomes available', async () => {
+    // Since the 2026-11-25 redesign a segment needs a rule as well as a name.
+    await test.step('type a name: Create stays greyed out without a rule', async () => {
       await dialog.getByRole('textbox', { name: 'Name' }).fill(segmentName);
+      await expect(createButton).toBeDisabled();
+    });
+    await test.step('add a rule: Create becomes available', async () => {
+      await contactsPage.filtersDialog.addFirstNameContainsRule('qa');
       await expect(createButton).toBeEnabled();
     });
     const segment = await test.step('create the segment', async () => {

@@ -118,8 +118,6 @@ test.describe('Permissions: Agent on the API', { tag: ['@permissions'] }, () => 
       ENDPOINTS.closingNotes,
       ENDPOINTS.websites,
       ENDPOINTS.contactFields,
-      ENDPOINTS.outcomeReasons,
-      ENDPOINTS.wrapUp,
       ENDPOINTS.lifecycles,
       ENDPOINTS.apiKeys,
       ENDPOINTS.webhookEndpoints,
@@ -155,7 +153,8 @@ test.describe('Permissions: Agent on the API', { tag: ['@permissions'] }, () => 
     for (const [method, path] of [
       ['PATCH', `/v1/organizations/${organization.id}`],
       ['PUT', `/v1/workspaces/${workspaceId}/slas`],
-      ['PATCH', '/v1/workspace-assignments'],
+      // Assignment rules were saved to /v1/workspace-assignments until the 2026-11-25 redesign; they
+      // are now part of the workspace, whose PATCH is covered by the known bug agent-can-update-workspace.
     ] as const) {
       const response = await test.step(`${method} ${path}`, () =>
         send({ request, apiHeaders }, method, path));
@@ -234,7 +233,7 @@ test.describe('Permissions: Agent on the API', { tag: ['@permissions'] }, () => 
     customViewsApi,
     cleanup,
   }) => {
-    const view = { ...buildSavedView(), share: 'Just me' as const };
+    const view = { ...buildSavedView(), share: 'Only me' as const };
 
     const created = await test.step('POST a "Just me" view: responds 201', async () => {
       const response = await customViewsApi.create(toCustomViewPayload(view));
@@ -267,7 +266,7 @@ test.describe('Permissions: Agent on the API', { tag: ['@permissions'] }, () => 
     });
     await test.step('share their own "Just me" view: responds 403', async () => {
       const view = await customViewsApi.createRecord(
-        toCustomViewPayload({ ...buildSavedView(), share: 'Just me' }),
+        toCustomViewPayload({ ...buildSavedView(), share: 'Only me' }),
       );
       cleanup.add(`view ${view.name}`, () => customViewsApi.deleteIfExists(view.id));
       const response = await customViewsApi.update(view.id, { visibility: 'workspace' });

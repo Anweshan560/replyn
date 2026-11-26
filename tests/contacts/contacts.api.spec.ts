@@ -112,7 +112,7 @@ test.describe('Contacts API', { tag: ['@contacts'] }, () => {
       const payload = {
         ...toContactPayload(buildContact()),
         lifecycleId: stage.id,
-        origin: 'referral' as const,
+        source: 'referral' as const,
         referredByName: buildContact().firstName,
       };
 
@@ -303,7 +303,7 @@ test.describe('Contacts API', { tag: ['@contacts'] }, () => {
       const created = await test.step('create a referred contact', () =>
         contactsApi.createRecord({
           ...toContactPayload(buildContact()),
-          origin: 'referral',
+          source: 'referral',
           referredByName: referredBy,
         }));
       cleanup.add(`contact ${created.id}`, () => contactsApi.deleteIfExists(created.id));
@@ -313,7 +313,7 @@ test.describe('Contacts API', { tag: ['@contacts'] }, () => {
       await test.step('responds 200: a referral, with who referred them, added by a user', async () => {
         expect(response.status()).toBe(200);
         expect((await response.json()).data).toMatchObject({
-          origin: 'referral',
+          source: 'referral',
           sourceDetail: referredBy,
           createdBy: 'user',
         });

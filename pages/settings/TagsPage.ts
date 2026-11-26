@@ -7,7 +7,7 @@ export class TagsPage extends SettingsTablePage<TagData> {
   constructor(page: Page) {
     super(page, {
       path: '/settings/tags',
-      menu: ['Inbox', 'Tags'],
+      menu: ['Contacts', 'Tags'],
       addButtonName: 'New tag',
       createDialog: { name: 'Create Tag', submitButton: 'Create' },
       editDialog: { name: 'Edit Tag', submitButton: 'Update' },

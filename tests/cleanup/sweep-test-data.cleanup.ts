@@ -51,7 +51,6 @@ test.describe('Clean up old test data', () => {
     snippetsApi,
     savedFilesApi,
     contactFieldsApi,
-    outcomeReasonsApi,
     apiKeysApi,
     webhooksApi,
     customViewsApi,
@@ -78,7 +77,6 @@ test.describe('Clean up old test data', () => {
       { label: 'snippets', api: snippetsApi, nameFields: ['name'] },
       { label: 'saved files', api: savedFilesApi, nameFields: ['name'] },
       { label: 'contact fields', api: contactFieldsApi, nameFields: ['name', 'key'] },
-      { label: 'outcome reasons', api: outcomeReasonsApi, nameFields: ['label'] },
       { label: 'API keys', api: apiKeysApi, nameFields: ['name'] },
       { label: 'webhooks', api: webhooksApi, nameFields: ['description', 'url'] },
       { label: 'inbox views', api: customViewsApi, nameFields: ['name'] },
@@ -109,7 +107,15 @@ test.describe('Clean up old test data', () => {
 
     for (const { label, api, nameFields } of lists) {
       await test.step(label, async () => {
-        const records = (await api.listRecords()).filter((record) => isMarked(record, nameFields));
+        // One list that can't be read (e.g. a feature the app removed) must not stop the sweep of
+        // all the others: note it, and report it with the failed deletions at the end.
+        let records: AnyRecord[];
+        try {
+          records = (await api.listRecords()).filter((record) => isMarked(record, nameFields));
+        } catch (error) {
+          failures.push(`${label}: could not list (${(error as Error).message})`);
+          return;
+        }
         await sweep(label, records, (id) => api.deleteIfExists(id));
       });
     }

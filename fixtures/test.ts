@@ -11,7 +11,6 @@ import { ApiKeysApi, WebhooksApi } from '../api/DeveloperApi';
 import { DoctorsApi } from '../api/DoctorsApi';
 import { MembersApi } from '../api/MembersApi';
 import { OrganizationApi } from '../api/OrganizationApi';
-import { OutcomeReasonsApi } from '../api/OutcomeReasonsApi';
 import {
   ClosingNotesApi,
   SavedFilesApi,
@@ -25,7 +24,6 @@ import { TreatmentsApi } from '../api/TreatmentsApi';
 import { AssignmentApi, SlasApi, WorkspaceApi } from '../api/WorkspaceApi';
 import { RolesApi, WorkspaceUsersApi } from '../api/RolesApi';
 import { ReportsApi } from '../api/ReportsApi';
-import { WrapUpApi } from '../api/WrapUpApi';
 import { WorkflowsApi } from '../api/WorkflowsApi';
 import { BroadcastsApi, ChannelsApi } from '../api/BroadcastsApi';
 import { SidebarApi } from '../api/SidebarApi';
@@ -42,7 +40,6 @@ import { DoctorsPage } from '../pages/clinic/DoctorsPage';
 import { TreatmentsPage } from '../pages/clinic/TreatmentsPage';
 import { MembersPage } from '../pages/settings/MembersPage';
 import { OrganizationGeneralPage } from '../pages/settings/OrganizationGeneralPage';
-import { OutcomeReasonsPage } from '../pages/settings/OutcomeReasonsPage';
 import { ClosingNotesPage } from '../pages/settings/ClosingNotesPage';
 import { ContactFieldsPage } from '../pages/settings/ContactFieldsPage';
 import { SavedFilesPage } from '../pages/settings/SavedFilesPage';
@@ -50,7 +47,6 @@ import { SnippetsPage } from '../pages/settings/SnippetsPage';
 import { TagsPage } from '../pages/settings/TagsPage';
 import { TeamsPage } from '../pages/settings/TeamsPage';
 import { WebhooksPage } from '../pages/settings/WebhooksPage';
-import { WrapUpPage } from '../pages/settings/WrapUpPage';
 import { AiSettingsPage } from '../pages/settings/AiSettingsPage';
 import { AssignmentPage } from '../pages/settings/AssignmentPage';
 import { HoursPage } from '../pages/settings/HoursPage';
@@ -102,10 +98,6 @@ type Fixtures = {
   contactsApi: ContactsApi;
   contactFieldsPage: ContactFieldsPage;
   contactFieldsApi: ContactFieldsApi;
-  outcomeReasonsPage: OutcomeReasonsPage;
-  outcomeReasonsApi: OutcomeReasonsApi;
-  wrapUpPage: WrapUpPage;
-  wrapUpApi: WrapUpApi;
   apiKeysApi: ApiKeysApi;
   webhooksPage: WebhooksPage;
   webhooksApi: WebhooksApi;
@@ -364,22 +356,6 @@ export const test = base.extend<Fixtures>({
 
   contactFieldsApi: async ({ request, apiHeaders }, use) => {
     await use(new ContactFieldsApi(request, apiHeaders));
-  },
-
-  outcomeReasonsPage: async ({ page }, use) => {
-    await use(new OutcomeReasonsPage(page));
-  },
-
-  outcomeReasonsApi: async ({ request, apiHeaders }, use) => {
-    await use(new OutcomeReasonsApi(request, apiHeaders));
-  },
-
-  wrapUpPage: async ({ page }, use) => {
-    await use(new WrapUpPage(page));
-  },
-
-  wrapUpApi: async ({ request, apiHeaders }, use) => {
-    await use(new WrapUpApi(request, apiHeaders));
   },
 
   apiKeysApi: async ({ request, apiHeaders }, use) => {

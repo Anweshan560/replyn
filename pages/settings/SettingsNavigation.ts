@@ -11,15 +11,16 @@ export class SettingsNavigation {
   /**
    * Go from the dashboard to a settings page as a user would: sidebar → Settings → group → page.
    * @param group the section, e.g. "Organization"
-   * @param pageName the link inside it, e.g. "Members"
+   * @param pageName the link inside it, e.g. "Members". A pattern when the link's name carries more
+   *   than its label (AI → General also holds the assistant's avatar: "Novy, rest General").
    */
-  async openFromDashboard(group: string, pageName: string): Promise<void> {
+  async openFromDashboard(group: string, pageName: string | RegExp): Promise<void> {
     await this.page.goto('/dashboard');
     await this.page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(this.page).toHaveURL('/settings');
 
     const groupLinks = this.menu.getByRole('group', { name: group });
-    const link = groupLinks.getByRole('link', { name: pageName, exact: true });
+    const link = groupLinks.getByRole('link', { name: pageName, exact: typeof pageName === 'string' });
     // A pop-up "Settings" menu sometimes opens over the navigation (seen on CI) and swallows the
     // click, so close any open menu with Escape and try again until the click goes through.
     await expect(async () => {

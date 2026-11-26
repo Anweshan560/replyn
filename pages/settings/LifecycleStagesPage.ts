@@ -21,7 +21,7 @@ export class LifecycleStagesPage {
   }
 
   async openFromDashboard(): Promise<void> {
-    await this.navigation.openFromDashboard('Inbox', 'Lifecycle');
+    await this.navigation.openFromDashboard('Contacts', 'Lifecycle');
     await expect(this.page).toHaveURL('/settings/lifecycle');
   }
 

@@ -28,6 +28,18 @@ const TOTAL = /^(\d+) contacts?$/;
 
 // Every test creates its own contacts (the workspace has almost none) and deletes them afterwards.
 // Lists are narrowed with a search for the test's own contacts, as other tests run in parallel.
+/**
+ * Since the 2026-11-25 redesign the left panel's filters go in the address as
+ * ?filter={"rules":[{"field":"lifecycle","operator":"hasAnyOf","value":[id]}]}.
+ */
+function filterRule(url: URL, field: string): { value?: string[] } | undefined {
+  const raw = url.searchParams.get('filter');
+  if (!raw) return undefined;
+  return (JSON.parse(raw).rules as { field: string; value?: string[] }[]).find(
+    (rule) => rule.field === field,
+  );
+}
+
 test.describe('Contacts list', { tag: ['@contacts'] }, () => {
   test(
     'should open Contacts from the sidebar with the list and its columns',
@@ -101,7 +113,7 @@ test.describe('Contacts list', { tag: ['@contacts'] }, () => {
       contactsPage.openSidebarLink(stage.name));
 
     await test.step('the address has the stage, and the contact is listed', async () => {
-      await expect(page).toHaveURL((url) => url.searchParams.get('lifecycle') === stage.id);
+      await expect(page).toHaveURL((url) => filterRule(url, 'lifecycle')?.value?.includes(stage.id) === true);
       await expect(contactsPage.rowFor(name)).toBeVisible();
     });
     const stageTotal = await test.step(`every listed contact is in "${stage.name}"`, async () => {
@@ -114,7 +126,7 @@ test.describe('Contacts list', { tag: ['@contacts'] }, () => {
     await test.step('click Everyone', () => contactsPage.openSidebarLink('Everyone'));
 
     await test.step('the address has no stage and the list holds more than that stage', async () => {
-      await expect(page).toHaveURL((url) => !url.searchParams.has('lifecycle'));
+      await expect(page).toHaveURL((url) => !filterRule(url, 'lifecycle'));
       // The workspace's own "contaact1" is a New Lead, so Everyone always has more.
       const everyoneTotal = Number((await page.getByText(TOTAL).innerText()).match(TOTAL)![1]);
       expect(everyoneTotal).toBeGreaterThan(stageTotal);
@@ -173,7 +185,9 @@ test.describe('Contacts list', { tag: ['@contacts'] }, () => {
       contactsPage.openSidebarLink(treatment.name));
 
     await test.step('the address has the treatment, and only that contact is listed with it', async () => {
-      await expect(page).toHaveURL((url) => url.searchParams.get('treatments') === treatment.id);
+      await expect(page).toHaveURL(
+        (url) => filterRule(url, 'treatment')?.value?.includes(treatment.id) === true,
+      );
       await expect(contactsPage.rowFor(fullName(contact))).toBeVisible();
       await expect(contactsPage.contactRows()).toHaveCount(1);
       expect(await contactsPage.columnValues('Treatments')).toEqual([treatment.name]);
@@ -326,12 +340,13 @@ test.describe('Contacts list', { tag: ['@contacts'] }, () => {
     await test.step(`the new contact's card is in the "${stage.name}" column`, async () => {
       await expect(contactsPage.cardColumn(stage.name, name)).toBeVisible();
     });
-    await test.step("every column's count matches the server's count for that stage", async () => {
+    await test.step("every column's count matches the server's count of listed contacts", async () => {
       // Other tests add and remove contacts meanwhile, so compare both until they agree.
       await expect(async () => {
-        const fromServer = await lifecyclesApi.openStages();
-        for (const { name: stageName, contactCount } of fromServer) {
-          expect(await contactsPage.cardCount(stageName), `count of "${stageName}"`).toBe(contactCount);
+        for (const { id, name: stageName } of stages) {
+          expect(await contactsPage.cardCount(stageName), `count of "${stageName}"`).toBe(
+            await contactsApi.listedInStage(id),
+          );
         }
       }).toPass({ timeout: 30_000 });
     });

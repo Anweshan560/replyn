@@ -24,7 +24,7 @@ export class AiSettingsPage {
   }
 
   async openFromDashboard(): Promise<void> {
-    await this.navigation.openFromDashboard('AI', 'General');
+    await this.navigation.openFromDashboard('AI', /General$/);
     await expect(this.page).toHaveURL('/settings/ai');
   }
 

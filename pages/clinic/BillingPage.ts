@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { ENDPOINTS } from '../../api/ResourceApi';
 import { waitForApiResponse } from '../../utils/network';
+import { openFromSidebarGroup } from '../Sidebar';
 
 /** The Billing tabs, and the ?view= value each one puts in the address. */
 export const BILLING_TABS = {
@@ -26,18 +27,11 @@ export class BillingPage {
     this.grid = page.getByRole('main').getByRole('grid');
   }
 
-  /** Go to Billing through Clinic in the main sidebar, then the Clinic menu. */
+  /** Go to Billing through the main sidebar's Clinic group. */
   async openFromSidebar(): Promise<void> {
     await this.page.goto('/dashboard');
-    await this.page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('link', { name: 'Clinic' })
-      .click();
     const loaded = waitForApiResponse(this.page, 'GET', `${ENDPOINTS.billing}/patients`);
-    await this.page
-      .getByRole('navigation', { name: 'Clinic navigation' })
-      .getByRole('link', { name: 'Billing' })
-      .click();
+    await openFromSidebarGroup(this.page, 'Clinic', 'Billing');
     expect((await loaded).ok(), 'billing should load').toBe(true);
   }
 

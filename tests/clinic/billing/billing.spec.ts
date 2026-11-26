@@ -33,7 +33,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     },
   );
 
-  test('should list an attended visit with no invoice under Needs review', async ({
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.fixme('should list an attended visit with no invoice under Needs review', async ({
     billingPage,
     appointmentsApi,
     contactsApi,
@@ -64,7 +66,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     });
   });
 
-  test('should record the payment of an attended visit as an invoice and a receipt', async ({
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.fixme('should record the payment of an attended visit as an invoice and a receipt', async ({
     appointmentsPage,
     billingPage,
     appointmentsApi,
@@ -133,7 +137,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     });
   });
 
-  test("should hold an advance as credit on the patient's account", async ({
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.fixme("should hold an advance as credit on the patient's account", async ({
     contactsPage,
     billingPage,
     billingApi,
@@ -187,7 +193,9 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
     });
   });
 
-  test('should find a patient by name in All patients', async ({
+  // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
+  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  test.fixme('should find a patient by name in All patients', async ({
     billingPage,
     billingApi,
     contactsApi,

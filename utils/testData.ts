@@ -581,50 +581,6 @@ export function buildContactField(
   };
 }
 
-/** The outcome reason's "Show under" options and the value the API stores for each. */
-export const OUTCOME_ANSWERS = {
-  'All done': 'all_done',
-  'Nothing booked': 'nothing_booked',
-  'Not interested': 'not_interested',
-  "No-show, won't come back": 'wont_come',
-} as const;
-
-export type OutcomeAnswerName = keyof typeof OUTCOME_ANSWERS;
-
-/** What a new reason is shown under when it is added from the page, before any edit. */
-export const DEFAULT_OUTCOME_ANSWERS: OutcomeAnswerName[] = ['Nothing booked', 'Not interested'];
-
-/** Settings → Inbox → Outcome Reasons. */
-export type OutcomeReasonData = { label: string; showUnder: OutcomeAnswerName[] };
-
-/** An outcome reason; pass the current one to get a different label and other answers. */
-export function buildOutcomeReason(current?: OutcomeReasonData): OutcomeReasonData {
-  const all = Object.keys(OUTCOME_ANSWERS) as OutcomeAnswerName[];
-  const others = all.filter((answer) => !current?.showUnder.includes(answer));
-  return {
-    label: `qa-${faker.helpers.arrayElement(['Insurance declined', 'Moved away', 'Too busy', 'Prefers online'])} ${uniqueSuffix()}`,
-    showUnder: current ? others : faker.helpers.arrayElements(all, { min: 1, max: 3 }),
-  };
-}
-
-/** The wrap-up outcome's "Result" options and the value the API stores for each. */
-export const WRAP_UP_RESULTS = { Won: 'won', 'In progress': 'in_progress', Lost: 'lost' } as const;
-
-export type WrapUpResultName = keyof typeof WRAP_UP_RESULTS;
-
-/** Settings → Inbox → Wrap-Up: one outcome. Its single step closes the conversation. */
-export type WrapUpOutcomeData = { name: string; result: WrapUpResultName; description: string };
-
-/** A wrap-up outcome; pass the current one to get a different result. */
-export function buildWrapUpOutcome(current?: WrapUpOutcomeData): WrapUpOutcomeData {
-  const results = Object.keys(WRAP_UP_RESULTS) as WrapUpResultName[];
-  return {
-    name: `qa-${faker.helpers.arrayElement(['Booked appointment', 'Sent price list', 'Will call back'])} ${uniqueSuffix()}`,
-    result: pickOther(results, (result) => result === current?.result),
-    description: `Pick this when ${faker.helpers.arrayElement(['the patient booked', 'prices were shared', 'the patient asked for a call'])}.`,
-  };
-}
-
 /** Settings → Workspace → API Keys. */
 export type ApiKeyData = { name: string };
 
@@ -648,39 +604,29 @@ export function buildWebhook(): WebhookData {
   };
 }
 
-/** The saved view's rule fields and operators used by the tests, and their API values. */
+/** The inbox view's rule fields and operators used by the tests, and their API values. */
 export const VIEW_FIELDS = { 'First name': 'firstName', 'Last name': 'lastName', Email: 'email' } as const;
-export const VIEW_OPERATORS = { contains: 'contains', 'starts with': 'beginsWith' } as const;
+export const VIEW_OPERATORS = { contains: 'contains' } as const;
 
-/** Icons from the emoji picker: what to search for, and the emoji to pick from the results. */
-export const VIEW_ICONS = [
-  { search: 'rocket', emoji: '🚀' },
-  { search: 'fire', emoji: '🔥' },
-  { search: 'bell', emoji: '🔔' },
-] as const;
-
-/** Inbox → Views: a saved filter with one rule. */
+/** Inbox → Views: a saved filter with one rule. Views have no icon since the 2026-11-25 redesign. */
 export type SavedViewData = {
   name: string;
-  icon: (typeof VIEW_ICONS)[number];
   rule: { field: keyof typeof VIEW_FIELDS; operator: keyof typeof VIEW_OPERATORS; value: string };
-  share: 'Just me' | 'Everyone';
+  share: 'Only me' | 'Everyone';
 };
 
-/** A saved view; pass the current one to get a different icon, rule and sharing. */
+/** A saved view; pass the current one to get a different name, rule field and sharing. */
 export function buildSavedView(current?: SavedViewData): SavedViewData {
   const fields = Object.keys(VIEW_FIELDS) as (keyof typeof VIEW_FIELDS)[];
-  const operators = Object.keys(VIEW_OPERATORS) as (keyof typeof VIEW_OPERATORS)[];
   return {
     name: `qa-${faker.helpers.arrayElement(['VIP patients', 'New leads', 'Dental enquiries'])} ${uniqueSuffix()}`,
-    icon: pickOther(VIEW_ICONS, (icon) => icon.emoji === current?.icon.emoji),
     rule: {
       field: pickOther(fields, (field) => field === current?.rule.field),
-      operator: pickOther(operators, (operator) => operator === current?.rule.operator),
+      operator: 'contains',
       value: `qa${uniqueSuffix()}`,
     },
     share:
-      current?.share === 'Everyone' ? 'Just me' : current ? 'Everyone' : pickRandom(['Just me', 'Everyone']),
+      current?.share === 'Everyone' ? 'Only me' : current ? 'Everyone' : pickRandom(['Only me', 'Everyone']),
   };
 }
 

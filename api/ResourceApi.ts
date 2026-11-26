@@ -22,9 +22,6 @@ export const ENDPOINTS = {
   lifecycles: '/v1/lifecycles',
   /** Archived fields are listed at `/archived`; a field is restored or purged at `/<id>/restore` and `/<id>/permanent`. */
   contactFields: '/v1/contact-fields',
-  outcomeReasons: '/v1/outcome-reasons',
-  /** The workspace's wrap-up: one record whose `config` holds every outcome. */
-  wrapUp: '/v1/wrap-up',
   apiKeys: '/v1/api-keys',
   /** Webhooks are delivered by Svix; the event types are listed at `/v1/webhooks/event-types`. */
   webhookEndpoints: '/v1/webhooks/endpoints',

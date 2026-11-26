@@ -4,8 +4,8 @@ import type { Segment } from '../../api/ContactsApi';
 import { waitForApiResponse } from '../../utils/network';
 
 /**
- * Contacts → Filter contacts: build rules, watch the "N contacts match" preview, and save the
- * rules as a segment.
+ * Contacts → New segment: build rules, watch the "N contacts match" preview, and save the rules as
+ * a segment. Since the 2026-11-25 redesign this one dialog does what the old Filters dialog did.
  */
 export class ContactFiltersDialog {
   readonly root: Locator;
@@ -17,8 +17,8 @@ export class ContactFiltersDialog {
   readonly preview: Locator;
 
   constructor(private readonly page: Page) {
-    this.root = page.getByRole('dialog', { name: 'Filters' });
-    this.segmentNameInput = this.root.getByRole('textbox', { name: 'Segment name' });
+    this.root = page.getByRole('dialog', { name: 'New segment' });
+    this.segmentNameInput = this.root.getByRole('textbox', { name: 'Name' });
     this.addRuleButton = this.root.getByRole('button', { name: 'Add rule' });
     this.createSegmentButton = this.root.getByRole('button', { name: 'Create segment' });
     this.matchCount = this.root.getByRole('heading', { level: 6 });
@@ -26,19 +26,31 @@ export class ContactFiltersDialog {
   }
 
   async open(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Filter contacts' }).first().click();
+    await this.page.getByRole('button', { name: 'New segment', exact: true }).first().click();
     await expect(this.root).toBeVisible();
   }
 
-  /** Add a rule. A new rule starts as "First name contains …"; type the value. */
+  /** Add a rule "First name contains `text`". A new rule starts as "Status is equal to …". */
   async addFirstNameContainsRule(text: string): Promise<void> {
     await this.addRuleButton.click();
-    // The field button shows its value through a label next to it, so check its accessible name.
-    await expect(this.root.getByRole('button', { name: /Filter field$/ })).toHaveAccessibleName(
-      'First name Filter field',
-    );
-    await expect(this.root.getByRole('button', { name: /Select operator$/ })).toHaveText('contains');
-    await this.root.getByRole('textbox', { name: 'Enter value' }).fill(text);
+    await this.chooseField('First name');
+    await expect(this.root.getByRole('button', { name: /Select operator$/ }).last()).toHaveText('contains');
+    await this.root.getByRole('textbox', { name: 'Enter value' }).last().fill(text);
+  }
+
+  /**
+   * Set the last rule's field, e.g. "First name". Its real button is zero-sized under the visible
+   * pill (a group), which takes the click.
+   */
+  async chooseField(field: string): Promise<void> {
+    const fieldButton = this.root.getByRole('button', { name: /Filter field$/ }).last();
+    const pill = this.page.getByRole('button', { name: /Filter field$/ });
+    await this.root.getByRole('group').filter({ has: pill }).last().click();
+    await this.page
+      .getByRole('dialog', { name: 'Filter field' })
+      .getByRole('option', { name: field, exact: true })
+      .click();
+    await expect(fieldButton).toHaveAccessibleName(`${field} Filter field`);
   }
 
   /** A contact's row in the preview. */

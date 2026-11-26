@@ -23,11 +23,11 @@ export class ClosingNotesPage extends SettingsTablePage<ClosingNoteData> {
 
   protected async fillDialog(dialog: Locator, note: ClosingNoteData): Promise<void> {
     await dialog.getByRole('textbox', { name: 'Category' }).fill(note.category);
-    await dialog.getByRole('textbox', { name: 'Summary (optional)' }).fill(note.summary);
+    await dialog.getByRole('textbox', { name: 'Description (optional)' }).fill(note.summary);
   }
 
   protected async expectDialogValues(dialog: Locator, note: ClosingNoteData): Promise<void> {
     await expect(dialog.getByRole('textbox', { name: 'Category' })).toHaveValue(note.category);
-    await expect(dialog.getByRole('textbox', { name: 'Summary (optional)' })).toHaveValue(note.summary);
+    await expect(dialog.getByRole('textbox', { name: 'Description (optional)' })).toHaveValue(note.summary);
   }
 }

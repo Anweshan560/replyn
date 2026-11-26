@@ -195,51 +195,39 @@
       ]
     },
     {
-      "key": "wrap-up-result-not-validated",
-      "issue": null,
-      "found": "2026-10-31",
-      "labels": ["bug", "known-bug", "api"],
-      "title": "Wrap-up outcome result (category) is not validated",
-      "steps": ["Save the wrap-up (POST /v1/wrap-up) with an outcome whose category is \"pending\"."],
-      "expected": "422: the result must be won, in_progress or lost (what the page offers).",
-      "actual": "Saved as \"pending\"; any text is accepted.",
-      "tests": [
-        "tests/settings/wrap-up/wrap-up.api.spec.ts › should reject an outcome with an unknown result with 422"
-      ]
-    },
-    {
-      "key": "wrap-up-outcome-without-ids",
-      "issue": null,
-      "found": "2026-10-31",
-      "labels": ["bug", "known-bug", "ui", "api"],
-      "title": "Wrap-Up: outcomes saved without ids show \"Needs attention\" and can't be saved",
-      "steps": [
-        "Save the wrap-up through the API with an outcome and step that have no `id` (the API accepts this).",
-        "Open Settings → Wrap-Up, change that outcome and press Save changes."
-      ],
-      "expected": "The change is saved (or the API refuses outcomes without ids in the first place).",
-      "actual": "The outcome is marked \"Needs attention\" with no reason shown, and nothing is saved.",
-      "tests": [
-        "tests/settings/wrap-up/wrap-up.spec.ts › should save an edit to an outcome that was created through the API without ids"
-      ]
-    },
-    {
       "key": "misleading-required-field-messages",
       "issue": null,
       "found": "2026-10-31",
       "labels": ["bug", "known-bug", "api"],
       "title": "Empty required fields are reported as \"too long\" (4 endpoints)",
       "steps": [
-        "POST an empty body {} to /v1/custom-views, /v1/contact-fields and /v1/outcome-reasons.",
+        "POST an empty body {} to /v1/custom-views and /v1/contact-fields.",
+        "POST a segment without a name to /v1/segments (since 2026-11-25).",
         "PUT an empty list [] to /v1/workspaces/<id>/slas."
       ],
       "expected": "422 saying the field is required, e.g. \"name should not be empty\", \"label should not be empty\", \"clocks should not be empty\".",
-      "actual": "422 with a message describing the opposite problem: \"name must be shorter than or equal to 60 characters\" (views), \"label must be shorter than or equal to 255 characters\" (contact fields), \"... 80 characters\" (outcome reasons), \"clocks must contain no more than 6 elements\" (SLAs).",
+      "actual": "422 with a message describing the opposite problem: \"name must be shorter than or equal to 60 characters\" (views), \"label must be shorter than or equal to 255 characters\" (contact fields), \"name must be shorter than or equal to 60 characters\" (segments), \"clocks must contain no more than 6 elements\" (SLAs).",
       "tests": [
-        "tests/inbox/saved-views/saved-views.api.spec.ts › should reject an empty view with 422 saying the name and icon are required",
+        "tests/inbox/saved-views/saved-views.api.spec.ts › should reject an empty view with 422 saying the name is required",
         "tests/settings/contact-fields/contact-fields.api.spec.ts › should reject an empty field with 422 naming the label and type",
-        "tests/settings/outcome-reasons/outcome-reasons.api.spec.ts › should reject an empty reason with 422 naming the label and answers",
+        "tests/contacts/contacts-segments.api.spec.ts › should reject a segment with no name with 422",
         "tests/settings/sla/sla.api.spec.ts › should reject an empty list of clocks with a clear 422"
+      ]
+    },
+    {
+      "key": "agent-offered-view-sharing",
+      "issue": null,
+      "found": "2026-11-25",
+      "labels": ["bug", "known-bug", "ui", "permissions"],
+      "title": "Agents are offered \"Who sees it: Everyone\" in New view, though their role cannot share views",
+      "steps": [
+        "Log in as an Agent (Views → Share is not ticked for the role).",
+        "Open the inbox and press New view."
+      ],
+      "expected": "No \"Who sees it\" choice: the Agent's views are Only me, as before the 2026-11-25 redesign.",
+      "actual": "\"Only me\" and \"Everyone\" are both offered. The API refuses an Everyone view from an Agent with 403 \"Your role can only make views for yourself\", so the choice can only fail.",
+      "tests": [
+        "tests/permissions/agent-access.spec.ts › should offer an Agent no Share choice in the New view dialog"
       ]
     },
     {

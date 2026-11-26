@@ -26,8 +26,6 @@
     "test:members": "playwright test tests/settings/members",
     "test:roles": "playwright test tests/settings/roles tests/settings/workspace-users",
     "test:contact-fields": "playwright test tests/settings/contact-fields",
-    "test:outcome-reasons": "playwright test tests/settings/outcome-reasons",
-    "test:wrap-up": "playwright test --project=workspace-settings",
     "test:api-keys": "playwright test tests/settings/api-keys tests/settings/webhooks",
     "test:inbox": "playwright test tests/inbox",
     "test:reports": "playwright test tests/reports",
