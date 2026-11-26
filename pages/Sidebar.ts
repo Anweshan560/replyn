@@ -18,16 +18,24 @@ export async function openFromSidebarGroup(page: Page, group: string, linkName: 
   const escaped = linkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const link = groupLinks.getByRole('link', { name: new RegExp(`^${escaped}( \\d+)?$`) });
   const groupButton = nav.getByRole('button', { name: group, exact: true });
+  const railEntry = nav.getByRole('link', { name: group, exact: true }).or(groupButton);
+  // On a slow machine (CI) the rail can be on screen before the app listens for hovers.
+  await expect(railEntry).toBeVisible({ timeout: 30_000 });
   await expect(async () => {
     if (!(await groupLinks.isVisible())) {
-      // Hovering the rail turns the group's icon into its expand button.
-      await nav.getByRole('link', { name: group, exact: true }).or(groupButton).hover({ timeout: 5_000 });
-      if ((await groupButton.getAttribute('aria-expanded', { timeout: 5_000 })) !== 'true') {
+      // Move the mouse off the sidebar first: hovering the spot the mouse is already on fires no
+      // new mouseenter, so a retry after a missed hover would never open the menu (seen on CI).
+      const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+      await page.mouse.move(viewport.width / 2, viewport.height / 2);
+      // Hovering the rail opens the full menu and turns the group's icon into its expand button.
+      await railEntry.hover({ timeout: 5_000 });
+      await expect(groupButton).toBeVisible({ timeout: 3_000 });
+      if ((await groupButton.getAttribute('aria-expanded')) !== 'true') {
         await groupButton.click({ timeout: 5_000 });
       }
     }
     await link.click({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
+  }).toPass({ timeout: 45_000 });
 }
 
 /**
