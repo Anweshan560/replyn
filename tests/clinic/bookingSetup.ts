@@ -3,7 +3,7 @@
  * treatment (unique names), so its appointments are easy to find and never clash with other tests
  * or the workspace's real calendar.
  */
-import { test } from '../../fixtures/test';
+import { test, expect } from '../../fixtures/test';
 import type { Cleanup } from '../../fixtures/test';
 import {
   toAppointmentPayload,
@@ -77,5 +77,28 @@ export function cleanupStrayContacts(
   cleanup.add(`contacts left by a rejected booking for "${patient.lastName}"`, async () => {
     const { result } = await contactsApi.searchRecords({ search: patient.lastName });
     for (const contact of result) await contactsApi.deleteIfExists(contact.id);
+  });
+}
+
+/**
+ * Wait until Replyn has sent the appointment to the workspace's EMR and stored the EMR's visit
+ * number (externalId), which happens in the background after booking. Returns that number.
+ */
+export async function waitForEmrLink(
+  appointmentsApi: AppointmentsApi,
+  appointmentId: string,
+): Promise<string> {
+  return test.step('wait for the EMR to receive the visit', async () => {
+    let externalId: string | null = null;
+    await expect
+      .poll(
+        async () => {
+          externalId = (await (await appointmentsApi.get(appointmentId)).json()).data.externalId;
+          return externalId;
+        },
+        { timeout: 30_000, message: 'the EMR should get the visit' },
+      )
+      .toEqual(expect.any(String));
+    return externalId!;
   });
 }

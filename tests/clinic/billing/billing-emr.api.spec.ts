@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/test';
 import { ENDPOINTS } from '../../../api/ResourceApi';
 import { env } from '../../../config/env';
 import { buildPatient } from '../../../utils/testData';
-import { bookThroughApi, createDoctorAndTreatment } from '../bookingSetup';
+import { bookThroughApi, createDoctorAndTreatment, waitForEmrLink } from '../bookingSetup';
 
 /** What Replyn answers when asked to record money in a workspace whose EMR keeps the money. */
 const EMR_KEEPS_MONEY = 'This workspace records money in its EMR. Add it there, then sync it here.';
@@ -65,8 +65,10 @@ test.describe('Billing API in EMR mode', { tag: ['@clinic', '@billing'] }, () =>
     const visit = await test.step('book a visit (Replyn sends it to the EMR)', () =>
       bookThroughApi({ appointmentsApi, contactsApi }, cleanup, setup, buildPatient(), yesterday()));
     const billingUrl = `${env.apiUrl}${ENDPOINTS.appointments}/${visit.id}/billing`;
+    // Until the EMR has the visit, its billing status is "not_linked".
+    await waitForEmrLink(appointmentsApi, visit.id);
 
-    await test.step('before a sync: billing is "local", with no counts, and never checked', async () => {
+    await test.step('once linked, before a sync: billing is "local", with no counts, and never checked', async () => {
       const response = await request.get(billingUrl, { headers: await apiHeaders() });
       expect(response.status()).toBe(200);
       const { data } = await response.json();

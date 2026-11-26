@@ -3,7 +3,7 @@ import { ENDPOINTS } from '../../../api/ResourceApi';
 import { BILLING_TABS } from '../../../pages/clinic/BillingPage';
 import { waitForApiResponse } from '../../../utils/network';
 import { buildPatient } from '../../../utils/testData';
-import { bookThroughApi, createDoctorAndTreatment } from '../bookingSetup';
+import { bookThroughApi, createDoctorAndTreatment, waitForEmrLink } from '../bookingSetup';
 
 const fullName = (patient: { firstName: string; lastName: string }) =>
   `${patient.firstName} ${patient.lastName}`;
@@ -53,8 +53,7 @@ test.describe('Clinic → Billing in EMR mode', { tag: ['@clinic', '@billing'] }
 
     const panel = appointmentsPage.panel;
     await test.step("the panel shows the visit's EMR number and a Sync from the EMR button", async () => {
-      const externalId = (await (await appointmentsApi.get(visit.id)).json()).data.externalId;
-      expect(externalId, 'Replyn should have sent the visit to the EMR').toEqual(expect.any(String));
+      const externalId = await waitForEmrLink(appointmentsApi, visit.id);
       await expect(panel.emrVisit).toHaveText(`Visit ${externalId}`);
       await expect(panel.syncFromEmrButton).toBeVisible();
     });
