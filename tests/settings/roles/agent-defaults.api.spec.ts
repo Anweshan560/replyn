@@ -43,7 +43,8 @@ test.describe('Roles: the Agent role on records others made', { tag: ['@roles', 
   });
 
   // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
-  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  // here"), so Replyn refuses payments, advances and visit outcomes. EMR mode is tested in
+  // billing-emr*.spec.ts; this runs again in a test workspace without an EMR (pending).
   test.fixme('should let an Agent correct a payment they recorded today, but not one someone else recorded', async ({
     request,
     appointmentsApi,

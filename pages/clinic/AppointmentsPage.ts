@@ -360,6 +360,40 @@ export class AppointmentPanel {
     this.paymentSteps = page.getByRole('dialog', { name: /of 3$/ });
   }
 
+  // --- EMR mode: the workspace records money in its EMR (ClinicSoft) -------------------------
+
+  /** The visit's number in the EMR, e.g. "Visit 1473", under "EMR Added". */
+  get emrVisit(): Locator {
+    return this.root.getByRole('paragraph').filter({ hasText: /^Visit \d+$/ });
+  }
+
+  /** "Sync from the EMR": pulls the visit's details back from the EMR. */
+  get syncFromEmrButton(): Locator {
+    return this.root.getByRole('button', { name: 'Sync from the EMR' });
+  }
+
+  /** "Refresh billing" in the Payment section: asks the EMR for the visit's invoices. */
+  get refreshBillingButton(): Locator {
+    // .first(): the button is nested in a second button with the same name.
+    return this.root.getByRole('button', { name: 'Refresh billing' }).first();
+  }
+
+  /** The Payment section's text, e.g. "The visit is done, the EMR has nothing for it". */
+  paymentText(text: string): Locator {
+    return this.root.getByRole('paragraph').filter({ hasText: text });
+  }
+
+  /** Press Refresh billing and wait for the sync to answer. */
+  async refreshBilling(appointmentId: string): Promise<void> {
+    const synced = waitForApiResponse(
+      this.page,
+      'POST',
+      `${ENDPOINTS.appointments}/${appointmentId}/billing/sync`,
+    );
+    await this.refreshBillingButton.click();
+    expect((await synced).status(), 'the billing sync should succeed').toBe(201);
+  }
+
   /** The status button, which shows the current status, e.g. "Unconfirmed". */
   statusButton(current: AppointmentStatusLabel): Locator {
     return this.root.getByRole('button', { name: current, exact: true }).first();
