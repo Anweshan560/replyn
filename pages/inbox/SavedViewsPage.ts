@@ -143,7 +143,10 @@ export class SavedViewsPage {
       .click();
     await this.page
       .getByRole('dialog', { name: 'Filter field' })
-      .getByRole('option', { name: view.rule.field, exact: true })
+      // Since 2026-11-27 the options have no accessible name: each holds the field and its
+      // description as text, e.g. "First name" / "The contact's given name.".
+      .getByRole('option')
+      .filter({ has: this.page.getByText(view.rule.field, { exact: true }) })
       .click();
     await expect(fieldButton).toHaveAccessibleName(`${view.rule.field} Filter field`);
     await expect(dialog.getByRole('button', { name: /Select operator$/ }).last()).toHaveText(

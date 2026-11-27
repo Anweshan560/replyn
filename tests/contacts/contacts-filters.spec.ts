@@ -97,7 +97,7 @@ test.describe('Contacts → Filter', { tag: ['@contacts'] }, () => {
     });
   });
 
-  test('should filter by a yes/no field: Has follow-up', async ({
+  test('should filter by a yes/no field: Follow-up is set', async ({
     contactsPage,
     contactsApi,
     tagsApi,
@@ -108,7 +108,7 @@ test.describe('Contacts → Filter', { tag: ['@contacts'] }, () => {
     await contactsPage.open();
     await contactsPage.search(pair.marker);
 
-    await contactsPage.filterMenu.addYesFilter('Has follow-up', 'followUpRequired');
+    await contactsPage.filterMenu.addYesFilter('Follow-up', 'followUpRequired');
 
     await test.step('only the contact with a follow-up is left', async () => {
       await expect(contactsPage.rowFor(nameOf(pair.tagged))).toBeVisible();

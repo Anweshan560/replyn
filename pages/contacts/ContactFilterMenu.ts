@@ -51,7 +51,9 @@ export class ContactFilterMenu {
   async addTextFilter(field: string, text: string): Promise<void> {
     await this.pickField(field);
     const editor = this.page.getByRole('dialog', { name: `${field} filter` });
-    await expect(editor.getByRole('paragraph')).toHaveText(`${field} contains`);
+    await expect(editor.getByRole('paragraph')).toHaveText(field);
+    // The operator is its own button since 2026-11-27, e.g. "contains How Last name matches".
+    await expect(editor.getByRole('button', { name: `contains How ${field} matches` })).toBeVisible();
     const filtered = this.waitForListSearch((body) =>
       rulesOf(body).some((rule) => rule.operator === 'contains' && rule.value === text),
     );
@@ -99,12 +101,19 @@ export class ContactFilterMenu {
     await this.page.keyboard.press('Escape');
   }
 
-  /** Add a yes/no field, e.g. "Has follow-up": it applies at once as "is yes". */
+  /**
+   * Add a yes/no field, e.g. "Follow-up", as "is set" (sent as `isEqualTo true`). Since 2026-11-27
+   * it asks "is set" / "is not set" instead of applying at once.
+   */
   async addYesFilter(field: string, apiField: string): Promise<void> {
     const filtered = this.waitForListSearch((body) =>
       rulesOf(body).some((rule) => rule.field === apiField && rule.value === true),
     );
     await this.pickField(field);
+    await this.page
+      .getByRole('dialog', { name: field })
+      .getByRole('menuitemradio', { name: 'is set', exact: true })
+      .click();
     expect((await filtered).ok(), 'the filtered list should load').toBe(true);
     await this.page.keyboard.press('Escape');
   }
@@ -138,7 +147,10 @@ export class ContactFilterMenu {
     await this.advancedDialog.getByRole('group').filter({ has: pill }).last().click();
     await this.page
       .getByRole('dialog', { name: 'Filter field' })
-      .getByRole('option', { name: field, exact: true })
+      // The options have no accessible name since 2026-11-27: each holds the field and its
+      // description as text.
+      .getByRole('option')
+      .filter({ has: this.page.getByText(field, { exact: true }) })
       .click();
     await expect(this.advancedDialog.getByRole('button', { name: /Select operator$/ }).last()).toHaveText(
       'contains',
