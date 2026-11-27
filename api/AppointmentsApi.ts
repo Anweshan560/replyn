@@ -69,10 +69,40 @@ export type Appointment = {
 
 /** Filters of GET /v1/clinics/appointments, as the calendar and the contact panel use them. */
 export type AppointmentFilters = {
+  /** Comma-separated ids. */
   doctorIds?: string;
   contactId?: string;
   startDate?: string;
   endDate?: string;
+  /** Comma-separated statuses, as the status tabs send them. */
+  statuses?: string;
+  /** Comma-separated sources: user (Team), ai (Novy), crm (EMR). */
+  bookedBy?: string;
+};
+
+/**
+ * The Catch up queues: each lists past visits that still need something, a page at a time.
+ * Values are "true", except crmStatus ("not-synced": visits the EMR has not received).
+ */
+export type AppointmentQueue =
+  | { needsAnswer: 'true' }
+  | { notRebooked: 'true' }
+  | { missingDetails: 'true' }
+  | { crmStatus: 'not-synced' };
+
+/** One page of a Catch up queue. */
+export type AppointmentPage = {
+  result: (Appointment & { needsAnswer: boolean; needsRebook?: boolean })[];
+  meta: { count: number; currentPage: number; nextPage: number | null; previousPage: number | null };
+};
+
+/** GET /v1/clinics/appointments/blocked-counts: the numbers on the Catch up queues. */
+export type QueueCounts = {
+  needsAnswer: number;
+  missingDetails: number;
+  crmPushFailed: number;
+  notRebooked: number;
+  sessionsToBook: number;
 };
 
 /**
@@ -110,6 +140,33 @@ export class AppointmentsApi extends ResourceApi<AppointmentPayload, Appointment
   async listRecordsWhere(filters: AppointmentFilters): Promise<Appointment[]> {
     const response = await this.listWhere(filters);
     if (!response.ok()) throw new Error(`GET ${this.path} returned ${response.status()}`);
+    return (await response.json()).data;
+  }
+
+  /** GET one page of a Catch up queue, optionally narrowed (e.g. to a doctor) by `filters`. */
+  async queue(
+    queue: AppointmentQueue,
+    { page = 1, limit = 25, ...filters }: AppointmentFilters & { page?: number; limit?: number } = {},
+  ): Promise<APIResponse> {
+    const headers = await this.headers();
+    const params = { ...queue, ...filters, paginated: 'true', page, limit };
+    return sendTimed(() => this.request.get(this.url(), { headers, params }));
+  }
+
+  async queueRecords(
+    queue: AppointmentQueue,
+    options: AppointmentFilters & { page?: number; limit?: number } = {},
+  ): Promise<AppointmentPage> {
+    const response = await this.queue(queue, options);
+    if (!response.ok()) throw new Error(`GET ${this.path} queue returned ${response.status()}`);
+    return (await response.json()).data;
+  }
+
+  /** GET the counts shown on the Catch up queues. */
+  async queueCounts(): Promise<QueueCounts> {
+    const headers = await this.headers();
+    const response = await sendTimed(() => this.request.get(this.url('blocked-counts'), { headers }));
+    if (!response.ok()) throw new Error(`GET blocked-counts returned ${response.status()}`);
     return (await response.json()).data;
   }
 

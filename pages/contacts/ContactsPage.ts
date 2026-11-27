@@ -5,6 +5,7 @@ import { env } from '../../config/env';
 import { waitForApiResponse } from '../../utils/network';
 import { CreateContactDialog } from './CreateContactDialog';
 import { ContactFiltersDialog } from './ContactFiltersDialog';
+import { ContactFilterMenu } from './ContactFilterMenu';
 import { ContactPanel } from './ContactPanel';
 
 /** The items of a contact row's "Contact actions" menu. */
@@ -44,6 +45,8 @@ export class ContactsPage {
   readonly segmentActionsButton: Locator;
   readonly createDialog: CreateContactDialog;
   readonly filtersDialog: ContactFiltersDialog;
+  /** The Filter menu: filter by any field, or by Advanced rules (and / or). */
+  readonly filterMenu: ContactFilterMenu;
   readonly newSegmentDialog: Locator;
   readonly deleteSegmentDialog: Locator;
   /** Shown instead of the table when nothing matches. */
@@ -70,6 +73,7 @@ export class ContactsPage {
     this.segmentActionsButton = page.getByLabel('Segment actions');
     this.createDialog = new CreateContactDialog(page);
     this.filtersDialog = new ContactFiltersDialog(page);
+    this.filterMenu = new ContactFilterMenu(page, (matches) => this.waitForListSearch(matches));
     this.newSegmentDialog = page.getByRole('dialog', { name: 'New segment' });
     this.deleteSegmentDialog = page.getByRole('dialog', { name: 'Delete segment?' });
     this.noMatches = page.getByText('No contacts match');

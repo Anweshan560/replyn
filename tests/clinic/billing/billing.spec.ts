@@ -34,7 +34,8 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
   );
 
   // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
-  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  // here"), so Replyn refuses payments, advances and visit outcomes. EMR mode is tested in
+  // billing-emr*.spec.ts; this runs again in a test workspace without an EMR (pending).
   test.fixme('should list an attended visit with no invoice under Needs review', async ({
     billingPage,
     appointmentsApi,
@@ -67,7 +68,8 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
   });
 
   // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
-  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  // here"), so Replyn refuses payments, advances and visit outcomes. EMR mode is tested in
+  // billing-emr*.spec.ts; this runs again in a test workspace without an EMR (pending).
   test.fixme('should record the payment of an attended visit as an invoice and a receipt', async ({
     appointmentsPage,
     billingPage,
@@ -138,7 +140,8 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
   });
 
   // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
-  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  // here"), so Replyn refuses payments, advances and visit outcomes. EMR mode is tested in
+  // billing-emr*.spec.ts; this runs again in a test workspace without an EMR (pending).
   test.fixme("should hold an advance as credit on the patient's account", async ({
     contactsPage,
     billingPage,
@@ -194,7 +197,8 @@ test.describe('Clinic → Billing', { tag: ['@clinic', '@billing'] }, () => {
   });
 
   // Set aside 2026-11-25: the workspace now records money in its EMR ("Add it there, then sync it
-  // here"), so Replyn refuses payments, advances and visit outcomes. Rewrite for EMR mode later.
+  // here"), so Replyn refuses payments, advances and visit outcomes. EMR mode is tested in
+  // billing-emr*.spec.ts; this runs again in a test workspace without an EMR (pending).
   test.fixme('should find a patient by name in All patients', async ({
     billingPage,
     billingApi,

@@ -80,6 +80,12 @@ export type Contact = {
 /** A filter rule, as the list's stage links, the Filters dialog and saved segments send it. */
 export type FilterRule = { field: string; operator: string; value: unknown; valueSource?: 'value' };
 
+/**
+ * The rules of a filter. Rules next to each other must all match; Advanced rules puts "or" (or
+ * "and") between two rules to join them, e.g. [ruleA, "or", ruleB].
+ */
+export type FilterRules = (FilterRule | 'and' | 'or')[];
+
 /** Request body for POST /v1/contacts/search. Every field is optional. */
 export type ContactSearch = {
   search?: string;
@@ -87,7 +93,7 @@ export type ContactSearch = {
   limit?: number;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
-  filter?: { rules: FilterRule[] };
+  filter?: { rules: FilterRules };
 };
 
 /** One page of search results. */

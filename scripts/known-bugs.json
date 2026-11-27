@@ -452,6 +452,22 @@
       "tests": [
         "tests/inbox/conversation/conversation-actions.api.spec.ts › should not log anything when an open conversation is set to open"
       ]
+    },
+    {
+      "key": "contact-filter-bad-tag-id-500",
+      "issue": null,
+      "found": "2026-11-26",
+      "labels": ["bug", "known-bug", "api"],
+      "title": "Filtering contacts by a tag id that is not a UUID answers 500 instead of 422",
+      "steps": [
+        "POST /v1/contacts/search with { \"filter\": { \"rules\": [{ \"field\": \"tags\", \"operator\": \"hasAnyOf\", \"value\": [\"not-a-uuid\"] }] } }.",
+        "The Contacts page sends this rule when Filter → Tags is used, and puts it in the address (?filter=...), so an edited or old link sends it too."
+      ],
+      "expected": "422 \"Invalid filter structure\", like every other bad rule (unknown field, operator or time unit).",
+      "actual": "500 Internal server error: the bad id reaches the database query unchecked.",
+      "tests": [
+        "tests/contacts/contacts-filters.api.spec.ts › should reject a tag id that is not a UUID with 422"
+      ]
     }
   ]
 }
