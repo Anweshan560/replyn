@@ -135,7 +135,8 @@ export default defineConfig({
     {
       name: 'agent-setup',
       testDir: './tests/setup',
-      testMatch: /agent\.setup\.ts/,
+      // Anchored: no-emr-agent.setup.ts also ends in "agent.setup.ts".
+      testMatch: /(^|[\\/])agent\.setup\.ts$/,
       use: { ...devices['Desktop Chrome'] },
     },
     // Quick check that the app is up: login, and one key page per area (tests tagged @smoke).
