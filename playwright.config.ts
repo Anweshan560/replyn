@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { AGENT_AUTH_FILE, AUTH_FILE, env, getAgentCredentials } from './config/env';
+import { AGENT_AUTH_FILE, AUTH_FILE, NO_EMR_AUTH_FILE, env, getAgentCredentials } from './config/env';
 
 const isCI = !!process.env.CI;
 /** No visible browser on CI, or locally with HEADLESS=true (see `npm run test:headless`). */
@@ -28,6 +28,14 @@ const EXCLUSIVE_TESTS =
  */
 const PERMISSION_TESTS = /permissions[\\/].*\.spec\.ts/;
 const hasAgentAccount = !!getAgentCredentials();
+
+/**
+ * Money tests (UI and API) run in a second workspace with no EMR. The test workspace is connected
+ * to ClinicSoft, so it keeps its money in the EMR and refuses payments, advances and visit outcomes
+ * (tests/clinic/billing/billing-emr*.spec.ts cover that). Here Replyn records them itself. Their
+ * own setup (tests/setup/no-emr.setup.ts) saves a session switched to that workspace.
+ */
+const NO_EMR_TESTS = /no-emr[\\/].*\.spec\.ts/;
 
 /**
  * Inbox tests that work on the one real Instagram conversation (from the daily message job, see
@@ -135,7 +143,14 @@ export default defineConfig({
     {
       name: 'smoke',
       ...tagFilter(/@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS, VISUAL_TESTS],
+      testIgnore: [
+        API_TESTS,
+        EXCLUSIVE_TESTS,
+        PERMISSION_TESTS,
+        INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
+        NO_EMR_TESTS,
+      ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -143,7 +158,7 @@ export default defineConfig({
       ? Object.entries(CROSS_BROWSERS).map(([name, device]) => ({
           name,
           ...tagFilter(/@smoke/),
-          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, VISUAL_TESTS],
+          testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, VISUAL_TESTS, NO_EMR_TESTS],
           dependencies: ['setup'],
           use: { ...device, storageState: AUTH_FILE },
         }))
@@ -163,7 +178,14 @@ export default defineConfig({
     {
       name: 'ui',
       ...tagFilter(undefined, /@smoke/),
-      testIgnore: [API_TESTS, EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS, VISUAL_TESTS],
+      testIgnore: [
+        API_TESTS,
+        EXCLUSIVE_TESTS,
+        PERMISSION_TESTS,
+        INBOX_CONVERSATION_TESTS,
+        VISUAL_TESTS,
+        NO_EMR_TESTS,
+      ],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
     },
@@ -172,7 +194,7 @@ export default defineConfig({
       name: 'api',
       testMatch: API_TESTS,
       ...tagFilter(),
-      testIgnore: [EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS],
+      testIgnore: [EXCLUSIVE_TESTS, PERMISSION_TESTS, INBOX_CONVERSATION_TESTS, NO_EMR_TESTS],
       // agent-setup: some API tests also act as the Agent (the `agent` fixture).
       dependencies: ['setup', 'agent-setup'],
       use: {
@@ -181,6 +203,22 @@ export default defineConfig({
         headless: true,
         launchOptions: { slowMo: 0 },
       },
+    },
+    // The same login, switched to the workspace without an EMR (see NO_EMR_TESTS).
+    {
+      name: 'no-emr-setup',
+      testDir: './tests/setup',
+      testMatch: /no-emr\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // Recording money (UI and API) in the workspace without an EMR.
+    {
+      name: 'no-emr',
+      testMatch: NO_EMR_TESTS,
+      ...tagFilter(),
+      // agent-setup: the Agent's payment permissions (agent-payments-no-emr.api.spec.ts).
+      dependencies: ['no-emr-setup', 'agent-setup'],
+      use: { ...devices['Desktop Chrome'], storageState: NO_EMR_AUTH_FILE },
     },
     // Before the inbox tests: switch on the workflow that the next morning's message should start.
     // Its teardown runs after them and closes the test conversation (tests/inbox/setup).

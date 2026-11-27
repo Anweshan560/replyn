@@ -16,6 +16,12 @@ export const env = {
    * otherwise opens whichever workspace its API happens to list first, which can change.
    */
   testWorkspace: process.env.TEST_WORKSPACE || 'Testing',
+  /**
+   * A second workspace in the same organization with no EMR (no ClinicSoft integration), so Replyn
+   * records payments, advances and visit outcomes itself. The test workspace keeps its money in its
+   * EMR and refuses them. The tests in tests/clinic/no-emr run here (see tests/setup/no-emr.setup.ts).
+   */
+  noEmrWorkspace: process.env.NO_EMR_WORKSPACE || 'WITHOUT EMR',
   /** Sent as `x-tenant-id` on every API call. */
   tenantId: process.env.TENANT_ID || 'replyn',
   /**
@@ -40,6 +46,9 @@ export const env = {
 
 /** Where tests/setup/auth.setup.ts saves the logged-in browser session. */
 export const AUTH_FILE = 'playwright/.auth/user.json';
+
+/** Where tests/setup/no-emr.setup.ts saves the session switched to the workspace without an EMR. */
+export const NO_EMR_AUTH_FILE = 'playwright/.auth/no-emr.json';
 
 /** Where tests/setup/agent.setup.ts saves the Agent account's session, for the permission tests. */
 export const AGENT_AUTH_FILE = 'playwright/.auth/agent.json';

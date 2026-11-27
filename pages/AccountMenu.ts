@@ -19,10 +19,14 @@ export class AccountMenu {
    * Make `workspace` the current workspace, unless it already is. The app remembers the choice in
    * the browser only, so a fresh login otherwise opens whichever workspace the API lists first.
    */
-  async switchWorkspace(workspace: string): Promise<void> {
+  async switchWorkspace(workspaceName: string): Promise<void> {
+    // Names are compared without surrounding spaces: "WITHOUT EMR " was saved with a trailing one,
+    // and the menu shows (and names its items) without it.
+    const workspace = workspaceName.trim();
+    const current = new RegExp(` · ${escapeRegExp(workspace)}\\s*$`);
     await this.openButton.click();
     await expect(this.switchItem).toBeVisible();
-    if ((await this.switchItem.textContent())?.endsWith(` · ${workspace}`)) {
+    if (current.test((await this.switchItem.textContent()) ?? '')) {
       await this.page.keyboard.press('Escape');
       return;
     }
@@ -38,7 +42,11 @@ export class AccountMenu {
     await expect(this.page).toHaveURL('/dashboard');
 
     await this.openButton.click();
-    await expect(this.switchItem).toHaveText(new RegExp(` · ${workspace}$`));
+    await expect(this.switchItem).toHaveText(current);
     await this.page.keyboard.press('Escape');
   }
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

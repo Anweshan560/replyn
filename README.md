@@ -236,6 +236,7 @@ without a login token (401). `doctors.api.spec.ts` has all of them.
 | The test finds a real bug in the app                                     | Add the bug to `scripts/known-bugs.json`, call `knownBug('<key>')` first thing in the test, and create its issue: `npm run known-bugs -- --create`. See "Known bugs".          |
 | The test checks what a limited role may do                               | Put it in `tests/permissions`: it runs logged in as the Agent account.                                                                                                         |
 | The test fails now and then for reasons outside the app                  | Fix it. While you do, tag it `@quarantine`. See "Flaky tests".                                                                                                                 |
+| The test records money (a visit's payment, an advance)                   | Put it in `tests/clinic/no-emr`: it runs in the workspace without an EMR (`NO_EMR_WORKSPACE`). QA Workspace keeps its money in its EMR and refuses it with 409.                |
 
 ### 8. Run it
 

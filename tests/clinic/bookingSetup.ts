@@ -37,7 +37,7 @@ export async function createDoctorAndTreatment(
 
 /**
  * Remove an appointment and the contact its booking created for the patient. Deleting the contact
- * also removes the patient's invoices, receipts and advances (billing has no delete of its own).
+ * also removes the patient's invoices, receipts and advances, so the cleanup leaves billing as it was.
  */
 export function cleanupBooking(
   apis: { appointmentsApi: AppointmentsApi; contactsApi: ContactsApi },
