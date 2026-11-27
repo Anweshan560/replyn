@@ -176,9 +176,15 @@ export class WorkflowsApi extends ResourceApi<WorkflowPayload, WorkflowRecord> {
   async listFilteredRecords(filters: WorkflowFilters): Promise<WorkflowRecord[]> {
     const records: WorkflowRecord[] = [];
     for (let page: number | null = 1; page;) {
-      const data: { result: WorkflowRecord[]; meta: { nextPage: number | null } } = (
-        await (await this.listFiltered({ limit: 100, ...filters, page })).json()
-      ).data;
+      const response = await this.listFiltered({ limit: 100, ...filters, page });
+      // Say what the server answered instead of failing later on a missing `data.result`.
+      if (!response.ok()) {
+        throw new Error(
+          `GET workflows returned ${response.status()}: ${(await response.text()).slice(0, 300)}`,
+        );
+      }
+      const data: { result: WorkflowRecord[]; meta: { nextPage: number | null } } = (await response.json())
+        .data;
       records.push(...data.result);
       page = data.meta.nextPage;
     }

@@ -125,8 +125,10 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
     await test.step('Activate and confirm: the server refuses with 400', async () => {
       expect(await workflowsPage.setLive(workflow.name, 'Activate')).toBe(400);
     });
-    await test.step('"Couldn\'t update: Workflow validation failed" is shown and it stays paused', async () => {
-      await expect(workflowsPage.toast("Couldn't update")).toContainText('Workflow validation failed');
+    await test.step('"Couldn\'t update: Finish every step before switching it on" is shown and it stays paused', async () => {
+      await expect(workflowsPage.toast("Couldn't update")).toContainText(
+        'Finish every step before switching it on',
+      );
       await expect(workflowsPage.liveSwitch(workflow.name, 'Activate')).toBeVisible();
       expect((await (await workflowsApi.get(workflow.id)).json()).data.isActive).toBe(false);
     });

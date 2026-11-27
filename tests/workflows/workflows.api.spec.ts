@@ -40,7 +40,7 @@ test.describe('Workflows API', { tag: ['@workflows'] }, () => {
       expect(response.status()).toBe(201);
       expect(body.data.isActive).toBe(false);
       expect(body.data.validationErrors).toContainEqual({
-        message: 'Workflow must have at least one action step',
+        message: 'Add at least one step after the trigger',
       });
     });
   });
@@ -157,11 +157,11 @@ test.describe('Workflows API', { tag: ['@workflows'] }, () => {
     cleanup.add(`workflow ${created.id}`, () => workflowsApi.deleteIfExists(created.id));
 
     const response = await test.step('POST /activate', () => workflowsApi.activate(created.id));
-    await test.step('responds 400 "Workflow validation failed" and the workflow stays paused', async () => {
+    await test.step('responds 400 "Finish every step before switching it on" and the workflow stays paused', async () => {
       expect(response.status()).toBe(400);
       expect(await response.json()).toMatchObject({
-        message: 'Workflow validation failed',
-        errors: [{ message: 'Workflow must have at least one action step' }],
+        message: 'Finish every step before switching it on',
+        errors: [{ message: 'Add at least one step after the trigger' }],
       });
       expect((await (await workflowsApi.get(created.id)).json()).data.isActive).toBe(false);
     });
