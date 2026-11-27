@@ -16,20 +16,19 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
       const analytics: WorkflowAnalytics = (await (await analyticsLoaded).json()).data;
 
       await test.step('the tiles show the numbers the page loaded', async () => {
-        await expect(workflowsPage.tile('Active').getByRole('heading')).toHaveText(
-          String(analytics.activeWorkflows),
-        );
-        await expect(workflowsPage.tile('Active')).toContainText(`of ${analytics.totalWorkflows}`);
+        await expect(workflowsPage.tileValue('Live')).toHaveText(String(analytics.activeWorkflows));
+        await expect(workflowsPage.tile('Live')).toContainText(`of ${analytics.totalWorkflows}`);
         await expect(workflowsPage.tile('Runs · 7 days')).toContainText(String(analytics.totalExecutions));
         await expect(workflowsPage.tile('Success rate')).toContainText(`${analytics.successRate}%`);
         await expect(workflowsPage.tile('Failed')).toContainText(String(analytics.failedExecutions));
       });
       await test.step('the status tabs, search and trigger filter are there', async () => {
-        for (const tab of ['All', 'Active', 'Paused', 'Archived'] as const) {
+        for (const tab of ['All', 'Live', 'Off', 'Archived'] as const) {
           await expect(workflowsPage.statusTab(tab)).toBeVisible();
         }
         await expect(workflowsPage.searchBox).toBeVisible();
-        await expect(workflowsPage.triggerFilter).toHaveText('All triggers');
+        // The label sits next to the (zero-width) button since 2026-11-27; the button is named after it.
+        await expect(workflowsPage.triggerFilter).toHaveAccessibleName(/^All triggers/);
       });
     },
   );
@@ -46,15 +45,15 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
       await workflowsPage.openFromDashboard();
       await workflowsPage.search(workflow.name);
     });
-    await test.step('only that workflow is listed, as "Manual trigger · Exit", paused', async () => {
+    await test.step('only that workflow is listed, as "Started by hand · End workflow", paused', async () => {
       await expect(workflowsPage.rowFor(workflow.name)).toHaveCount(1);
-      await expect(workflowsPage.rowFor(workflow.name)).toContainText('Manual trigger · Exit');
+      await expect(workflowsPage.rowFor(workflow.name)).toContainText('Started by hand · End workflow');
       await expect(workflowsPage.liveSwitch(workflow.name, 'Activate')).toBeVisible();
       await expect(workflowsPage.rowFor('Untitled workflow')).toHaveCount(0);
     });
   });
 
-  test('should list a paused workflow under Paused but not under Active', async ({
+  test('should list a paused workflow under Off but not under Live', async ({
     workflowsPage,
     workflowsApi,
     cleanup,
@@ -64,21 +63,21 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
     await workflowsPage.openFromDashboard();
     await workflowsPage.search(workflow.name);
 
-    await test.step('Paused lists it (the page asks for isActive=false)', async () => {
-      await workflowsPage.showTab('Paused');
+    await test.step('Off lists it (the page asks for isActive=false)', async () => {
+      await workflowsPage.showTab('Off');
       await expect(workflowsPage.rowFor(workflow.name)).toBeVisible();
     });
     await test.step('Active does not (isActive=true)', async () => {
-      await workflowsPage.showTab('Active');
+      await workflowsPage.showTab('Live');
       await expect(workflowsPage.rowFor(workflow.name)).toHaveCount(0);
     });
-    await test.step('the trigger filter "Manual trigger" (triggerType=manual_trigger) lists it under All', async () => {
+    await test.step('the trigger filter "Started by hand" (triggerType=manual_trigger) lists it under All', async () => {
       await workflowsPage.showTab('All');
-      await workflowsPage.filterByTrigger('Manual trigger');
+      await workflowsPage.filterByTrigger('Started by hand');
       await expect(workflowsPage.rowFor(workflow.name)).toBeVisible();
     });
-    await test.step('the trigger filter "Contact created" (triggerType=contact_created) does not', async () => {
-      await workflowsPage.filterByTrigger('Contact created');
+    await test.step('the trigger filter "New contact" (triggerType=contact_created) does not', async () => {
+      await workflowsPage.filterByTrigger('New contact');
       await expect(workflowsPage.rowFor(workflow.name)).toHaveCount(0);
     });
   });
@@ -117,10 +116,8 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
     await workflowsPage.openFromDashboard();
     await workflowsPage.search(workflow.name);
 
-    await test.step('the row is flagged with 1 problem', async () => {
-      await expect(
-        workflowsPage.rowFor(workflow.name).getByRole('button', { name: '1', exact: true }),
-      ).toBeVisible();
+    await test.step('the row says "1 to set up"', async () => {
+      await expect(workflowsPage.rowFor(workflow.name)).toContainText('1 to set up');
     });
     await test.step('Activate and confirm: the server refuses with 400', async () => {
       expect(await workflowsPage.setLive(workflow.name, 'Activate')).toBe(400);
@@ -155,7 +152,9 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
     });
     await test.step('Restore: "Workflow restored", and it comes back paused', async () => {
       await workflowsPage.restore(workflow.name);
-      await expect(workflowsPage.toast('Workflow restored')).toContainText('stays paused');
+      await expect(workflowsPage.toast('Workflow restored')).toContainText(
+        'It stays off until you turn it back on.',
+      );
       await workflowsPage.showTab('All');
       await expect(workflowsPage.liveSwitch(workflow.name, 'Activate')).toBeVisible();
       expect((await workflowsApi.get(workflow.id)).status()).toBe(200);
@@ -232,12 +231,12 @@ test.describe('Workflows', { tag: ['@workflows'] }, () => {
       });
     await test.step('the copy opens in the editor', async () => {
       await expect(page).toHaveURL(new RegExp(`/workflows/${copy.id}`));
-      await expect(page.getByRole('textbox', { name: 'Untitled workflow' })).toHaveValue(copyName);
+      await expect(page.getByRole('textbox', { name: 'Workflow name' })).toHaveValue(copyName);
     });
     await test.step('back on the list, the copy is listed, paused, with the same trigger and steps', async () => {
       await workflowsPage.openFromDashboard();
       await workflowsPage.search(copyName);
-      await expect(workflowsPage.rowFor(copyName)).toContainText('Manual trigger · Exit');
+      await expect(workflowsPage.rowFor(copyName)).toContainText('Started by hand · End workflow');
       await expect(workflowsPage.liveSwitch(copyName, 'Activate')).toBeVisible();
       const stored = (await (await workflowsApi.get(copy.id)).json()).data;
       expect(stored).toMatchObject({
