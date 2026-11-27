@@ -78,6 +78,9 @@ jobs:
       # The limited Agent account for the permission tests; they are skipped while these are unset.
       TEST_AGENT_USERNAME: ${{ secrets.TEST_AGENT_USERNAME }}
       TEST_AGENT_PASSWORD: ${{ secrets.TEST_AGENT_PASSWORD }}
+      # The Agent of the workspace without an EMR (its payment permission test skips while unset).
+      TEST_AGENT_USERNAME1: ${{ secrets.TEST_AGENT_USERNAME1 }}
+      TEST_AGENT_PASSWORD1: ${{ secrets.TEST_AGENT_PASSWORD1 }}
       # Set a repository variable TEST_WORKSPACE to change it without editing this file.
       TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
       # The workspace without an EMR, for the money tests (tests/clinic/no-emr).

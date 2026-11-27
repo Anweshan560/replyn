@@ -50,6 +50,9 @@ export const AUTH_FILE = 'playwright/.auth/user.json';
 /** Where tests/setup/no-emr.setup.ts saves the session switched to the workspace without an EMR. */
 export const NO_EMR_AUTH_FILE = 'playwright/.auth/no-emr.json';
 
+/** Where tests/setup/no-emr-agent.setup.ts saves the no-EMR workspace's Agent session. */
+export const NO_EMR_AGENT_AUTH_FILE = 'playwright/.auth/no-emr-agent.json';
+
 /** Where tests/setup/agent.setup.ts saves the Agent account's session, for the permission tests. */
 export const AGENT_AUTH_FILE = 'playwright/.auth/agent.json';
 
@@ -60,6 +63,16 @@ export const AGENT_AUTH_FILE = 'playwright/.auth/agent.json';
 export function getAgentCredentials(): Credentials | undefined {
   const email = process.env.TEST_AGENT_USERNAME;
   const password = process.env.TEST_AGENT_PASSWORD;
+  return email && password ? { email, password } : undefined;
+}
+
+/**
+ * The Agent account of the workspace without an EMR (role "Agent" there), or undefined when
+ * TEST_AGENT_USERNAME1 / TEST_AGENT_PASSWORD1 are not set. Its payment permission test skips without it.
+ */
+export function getNoEmrAgentCredentials(): Credentials | undefined {
+  const email = process.env.TEST_AGENT_USERNAME1;
+  const password = process.env.TEST_AGENT_PASSWORD1;
   return email && password ? { email, password } : undefined;
 }
 

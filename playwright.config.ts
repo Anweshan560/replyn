@@ -211,13 +211,20 @@ export default defineConfig({
       testMatch: /no-emr\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
+    // That workspace's own Agent account (TEST_AGENT_USERNAME1), for its payment permissions.
+    {
+      name: 'no-emr-agent-setup',
+      testDir: './tests/setup',
+      testMatch: /no-emr-agent\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
     // Recording money (UI and API) in the workspace without an EMR.
     {
       name: 'no-emr',
       testMatch: NO_EMR_TESTS,
       ...tagFilter(),
-      // agent-setup: the Agent's payment permissions (agent-payments-no-emr.api.spec.ts).
-      dependencies: ['no-emr-setup', 'agent-setup'],
+      // no-emr-agent-setup: the Agent's payment permissions (agent-payments-no-emr.api.spec.ts).
+      dependencies: ['no-emr-setup', 'no-emr-agent-setup'],
       use: { ...devices['Desktop Chrome'], storageState: NO_EMR_AUTH_FILE },
     },
     // Before the inbox tests: switch on the workflow that the next morning's message should start.

@@ -1,7 +1,6 @@
 import { test, expect } from '../../../fixtures/test';
 import type { Invoice } from '../../../api/AppointmentsApi';
 import { BillingApi } from '../../../api/AppointmentsApi';
-import type { HeadersProvider } from '../../../api/ResourceApi';
 import { ENDPOINTS } from '../../../api/ResourceApi';
 import { env } from '../../../config/env';
 import { buildPatient, buildPaymentAmount } from '../../../utils/testData';
@@ -12,8 +11,8 @@ const yesterday = () => new Date(Date.now() - 24 * 60 * 60 * 1000);
 /**
  * The built-in Agent role's Payments default (Settings → Roles → Agent): "Record" is ticked, "And
  * fix or delete one they recorded, until the end of that day", but not "Edit or delete anyone's".
- * Payments can only be recorded in the workspace without an EMR, so the Agent must be a member of
- * it too (with the Agent role); until then the test is skipped.
+ * Payments can only be recorded in the workspace without an EMR, so this uses that workspace's own
+ * Agent account (TEST_AGENT_USERNAME1, tests/setup/no-emr-agent.setup.ts); without it the test skips.
  */
 test.describe('Roles: the Agent role on payments', { tag: ['@roles', '@permissions', '@billing'] }, () => {
   test('should let an Agent correct a payment they recorded today, but not one someone else recorded', async ({
@@ -24,21 +23,12 @@ test.describe('Roles: the Agent role on payments', { tag: ['@roles', '@permissio
     contactsApi,
     doctorsApi,
     treatmentsApi,
-    agent,
+    noEmrAgentHeaders: agentHeaders,
     cleanup,
   }) => {
-    // The Agent's session opens QA Workspace; send their calls to this workspace instead.
-    const agentHeaders: HeadersProvider = async () => ({
-      ...(await agent.headers()),
-      'x-workspace-id': workspaceId,
+    await test.step('the Agent works in the same workspace as the admin', async () => {
+      expect((await agentHeaders())['x-workspace-id']).toBe(workspaceId);
     });
-    const membership = await request.get(`${env.apiUrl}${ENDPOINTS.billing}`, {
-      headers: await agentHeaders(),
-    });
-    test.skip(
-      membership.status() === 403,
-      `The Agent account is not a member of the workspace "${env.noEmrWorkspace.trim()}"`,
-    );
 
     const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
     const attendedVisit = async () => {
