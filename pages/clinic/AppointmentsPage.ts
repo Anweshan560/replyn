@@ -339,9 +339,9 @@ export class AppointmentPanel {
   readonly notesInput: Locator;
   readonly saveButton: Locator;
   readonly moreActionsButton: Locator;
-  readonly recordPaymentButton: Locator;
+  readonly addPaymentButton: Locator;
   readonly deleteDialog: Locator;
-  readonly paymentSteps: Locator;
+  readonly invoiceDialog: Locator;
 
   constructor(private readonly page: Page) {
     // Named after the patient since the 2026-11-25 redesign; the full view is the dialog with
@@ -354,10 +354,10 @@ export class AppointmentPanel {
     this.saveButton = this.root.getByRole('button', { name: 'Save', exact: true });
     // .first(): the menu button is nested in a second button with the same name.
     this.moreActionsButton = this.root.getByRole('button', { name: 'More actions' }).first();
-    this.recordPaymentButton = this.root.getByRole('button', { name: 'Record the payment' });
+    // Only in a workspace without an EMR; one with an EMR says to record the payment there.
+    this.addPaymentButton = this.root.getByRole('button', { name: 'Add payment' });
     this.deleteDialog = page.getByRole('dialog', { name: 'Delete appointment?' });
-    // The steps' title changes ("What did the visit cost? 2 of 3"), but always ends with "of 3".
-    this.paymentSteps = page.getByRole('dialog', { name: /of 3$/ });
+    this.invoiceDialog = page.getByRole('dialog', { name: 'Record an invoice' });
   }
 
   // --- EMR mode: the workspace records money in its EMR (ClinicSoft) -------------------------
@@ -447,39 +447,26 @@ export class AppointmentPanel {
   }
 
   /**
-   * For an attended visit: Record the payment → "Paid for this visit" for `amount` → "All done".
-   * Returns once the server has saved it.
+   * Add payment → "Record an invoice" for `amount`, with an optional note, and save. Replyn makes a
+   * paid invoice and a cleared receipt for the visit. Returns once the server has saved it.
    */
-  async recordPayment(appointmentId: string, amount: number): Promise<void> {
-    await this.recordPaymentButton.click();
-    await expect(this.paymentSteps).toHaveAccessibleName(/^What did the visit cost\?/);
-    await this.chooseStepOption(/^Paid for this visit/);
-    const amountInput = this.paymentSteps.getByRole('textbox', { name: 'How much did they pay?' });
+  async addPayment(amount: number, notes?: string): Promise<void> {
+    await this.addPaymentButton.click();
+    await expect(this.invoiceDialog).toBeVisible();
+    const amountInput = this.invoiceDialog.getByRole('textbox', { name: 'Amount paid' });
     await amountInput.fill(String(amount));
     // The amount field takes the value when it loses focus.
     await amountInput.press('Tab');
-    await this.paymentSteps.getByRole('button', { name: 'Next' }).click();
-    await expect(this.paymentSteps).toHaveAccessibleName(/^What came of the visit\?/);
-    await this.chooseStepOption(/^All done/);
-    const saved = waitForApiResponse(this.page, 'POST', `${ENDPOINTS.appointments}/${appointmentId}/outcome`);
-    await this.paymentSteps.getByRole('button', { name: 'Save' }).click();
+    if (notes) await this.invoiceDialog.getByRole('textbox', { name: 'Notes (optional)' }).fill(notes);
+    const saved = waitForApiResponse(this.page, 'POST', ENDPOINTS.invoices);
+    await this.invoiceDialog.getByRole('button', { name: 'Record invoice' }).click();
     expect((await saved).status(), 'the server should save the payment').toBe(201);
-    await expect(this.paymentSteps).toBeHidden();
+    await expect(this.invoiceDialog).toBeHidden();
   }
 
   /** A money record shown in the panel, e.g. its invoice "INV-000001". */
   document(code: string): Locator {
     return this.root.getByRole('button', { name: new RegExp(escapeRegExp(code)) });
-  }
-
-  /**
-   * Tick an option in a step of Record the payment. The option's text covers its hidden radio and
-   * takes the clicks, so click the option's label (found from the radio) the way a user does.
-   */
-  private async chooseStepOption(name: RegExp): Promise<void> {
-    const radio = this.paymentSteps.getByRole('radio', { name });
-    await radio.locator('xpath=ancestor::label[1]').click();
-    await expect(radio).toBeChecked();
   }
 }
 

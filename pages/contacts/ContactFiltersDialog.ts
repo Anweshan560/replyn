@@ -48,7 +48,10 @@ export class ContactFiltersDialog {
     await this.root.getByRole('group').filter({ has: pill }).last().click();
     await this.page
       .getByRole('dialog', { name: 'Filter field' })
-      .getByRole('option', { name: field, exact: true })
+      // The options have no accessible name since 2026-11-27: each holds the field and its
+      // description as text.
+      .getByRole('option')
+      .filter({ has: this.page.getByText(field, { exact: true }) })
       .click();
     await expect(fieldButton).toHaveAccessibleName(`${field} Filter field`);
   }

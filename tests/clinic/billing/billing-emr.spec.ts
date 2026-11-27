@@ -60,7 +60,7 @@ test.describe('Clinic → Billing in EMR mode', { tag: ['@clinic', '@billing'] }
     await test.step('Payment says the EMR has nothing for the visit and to record it there', async () => {
       await expect(panel.paymentText('The visit is done, the EMR has nothing for it')).toBeVisible();
       await expect(panel.paymentText('Record the payment in the EMR, then refresh here.')).toBeVisible();
-      await expect(panel.recordPaymentButton).toBeHidden();
+      await expect(panel.addPaymentButton).toBeHidden();
     });
     await test.step('Refresh billing asks the EMR again, and the message stays', async () => {
       await panel.refreshBilling(visit.id);

@@ -28,7 +28,11 @@ test.describe('Sidebar widgets API', { tag: ['@sidebar'] }, () => {
   test('should count as unread exactly the unread notifications in the feed', async ({ sidebarApi }) => {
     const count: number = (await (await sidebarApi.unreadCount()).json()).data.count;
     const feed = (await (await sidebarApi.notifications(100)).json()).data;
-    test.skip(feed.meta?.nextPage, 'more than 100 notifications: the feed does not hold them all');
+    // The feed sends no paging info since 2026-11-27: a full page means there may be more.
+    test.skip(
+      !!feed.meta?.nextPage || feed.result.length >= 100,
+      '100 or more notifications: the feed does not hold them all',
+    );
 
     const unread = (feed.result as NotificationRecord[]).filter(
       (notification) => notification.readAt === null,

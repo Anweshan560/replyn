@@ -105,26 +105,6 @@ export type QueueCounts = {
   sessionsToBook: number;
 };
 
-/**
- * Request body for POST /v1/clinics/appointments/<id>/outcome: the "Record the payment" steps.
- * Saving it with a payment creates an invoice and a receipt for the visit.
- */
-export type AppointmentOutcome = {
-  attendance?: 'showed_up' | 'no_show';
-  isPaid?: boolean;
-  payment?: { amount: number };
-  /** The last step for an attended visit, e.g. "all_done" ("All done"). */
-  consultationAnswer?:
-    | 'booked_service'
-    | 'still_deciding'
-    | 'nothing_booked'
-    | 'not_interested'
-    | 'stopped_responding'
-    | 'all_done';
-  /** Required for a no-show: what happens next. */
-  noShowNext?: 'wont_come' | 'rescheduled' | 'will_tell_later';
-};
-
 export class AppointmentsApi extends ResourceApi<AppointmentPayload, Appointment> {
   constructor(request: APIRequestContext, headers: HeadersProvider) {
     super(request, headers, ENDPOINTS.appointments);
@@ -168,12 +148,6 @@ export class AppointmentsApi extends ResourceApi<AppointmentPayload, Appointment
     const response = await sendTimed(() => this.request.get(this.url('blocked-counts'), { headers }));
     if (!response.ok()) throw new Error(`GET blocked-counts returned ${response.status()}`);
     return (await response.json()).data;
-  }
-
-  /** Record what happened at the visit. */
-  async recordOutcome(id: string, outcome: AppointmentOutcome): Promise<APIResponse> {
-    const headers = await this.headers();
-    return sendTimed(() => this.request.post(this.url(`${id}/outcome`), { headers, data: outcome }));
   }
 }
 
@@ -234,12 +208,22 @@ export type LedgerRow = {
   status: string;
 };
 
+/**
+ * Request body for POST /v1/clinics/invoices: a visit's payment, as the visit panel's Add payment
+ * ("Record an invoice") sends it. Replyn makes a paid invoice and a cleared receipt for `total`.
+ * Only in a workspace without an EMR (one with an EMR keeps its money there).
+ */
+export type InvoicePayload = { appointmentId?: string; total?: number; reference?: string; notes?: string };
+
+/** An invoice as POST /v1/clinics/invoices returns it. Amounts are strings, e.g. "250.00". */
+export type Invoice = BillingDocument & { total: string; source: string; invoiceDate: string };
+
 /** Request body for POST /v1/clinics/contacts/<id>/advances. */
 export type AdvancePayload = { amount?: number; advanceDate?: string; notes?: string };
 
 /**
- * Billing has no delete of its own: a patient's invoices, receipts and advances go when their
- * contact is deleted. Tests clean up by deleting the contact.
+ * A patient's invoices, receipts and advances go when their contact is deleted, so tests clean up
+ * by deleting the contact.
  */
 export class BillingApi {
   constructor(
@@ -266,6 +250,22 @@ export class BillingApi {
         headers,
         data: advance,
       }),
+    );
+  }
+
+  /** POST a visit's payment: a paid invoice and a cleared receipt (Add payment in the visit panel). */
+  async recordInvoice(invoice: InvoicePayload): Promise<APIResponse> {
+    const headers = await this.headers();
+    return sendTimed(() =>
+      this.request.post(`${env.apiUrl}${ENDPOINTS.invoices}`, { headers, data: invoice }),
+    );
+  }
+
+  /** DELETE an invoice, with its receipt. */
+  async deleteInvoice(invoiceId: string): Promise<APIResponse> {
+    const headers = await this.headers();
+    return sendTimed(() =>
+      this.request.delete(`${env.apiUrl}${ENDPOINTS.invoices}/${invoiceId}`, { headers }),
     );
   }
 

@@ -151,7 +151,9 @@ export class ConversationPage {
       await this.noteBox.pressSequentially(` @${mention.slice(0, 3)}`, { delay: 60 });
       await this.page
         .getByRole('listbox', { name: 'Mentions' })
-        .getByRole('option', { name: new RegExp(`^@${escapeRegExp(mention)} `) })
+        // Each option is "@<name> <email>". Require the email right after the name, or
+        // "anweshan agent" would also pick "anweshan agent without emr".
+        .getByRole('option', { name: new RegExp(`^@${escapeRegExp(mention)} \\S*@`) })
         .click();
     }
     const saved = waitForApiResponse(this.page, 'POST', /\/v1\/contacts\/[^/]+\/activity$/);

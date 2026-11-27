@@ -2,23 +2,25 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { waitForApiResponse, waitForListResponse } from '../../utils/network';
 import { ENDPOINTS } from '../../api/ResourceApi';
 
-export type WorkflowStatusTab = 'All' | 'Active' | 'Paused' | 'Archived';
+/** Renamed 2026-11-27: Active → Live, Paused → Off. */
+export type WorkflowStatusTab = 'All' | 'Live' | 'Off' | 'Archived';
 
 /** The numbers at the top of the page. */
-export type WorkflowTile = 'Active' | 'Runs · 7 days' | 'Success rate' | 'Failed';
+export type WorkflowTile = 'Live' | 'Runs · 7 days' | 'Success rate' | 'Failed';
 
 /** The filter each status tab sends; null means the parameter is left out. */
 const STATUS_TAB_QUERY: Record<WorkflowStatusTab, Record<string, string | null>> = {
   All: { isActive: null, archived: null },
-  Active: { isActive: 'true', archived: null },
-  Paused: { isActive: 'false', archived: null },
+  Live: { isActive: 'true', archived: null },
+  Off: { isActive: 'false', archived: null },
   Archived: { archived: 'true' },
 };
 
 /** Trigger filter labels and the `triggerType` the page sends for them (those the tests use). */
 export const TRIGGER_TYPES = {
-  'Manual trigger': 'manual_trigger',
-  'Contact created': 'contact_created',
+  // Renamed 2026-11-27 (were "Manual trigger" and "Contact created").
+  'Started by hand': 'manual_trigger',
+  'New contact': 'contact_created',
 } as const;
 
 function escapeRegExp(text: string): string {
@@ -53,15 +55,20 @@ export class WorkflowsPage {
     await expect(this.statusTab('All')).toBeChecked();
   }
 
-  /** The number on one of the tiles at the top, e.g. "1 of 2" for Active. */
+  /**
+   * One of the tiles at the top, e.g. Live "8" "of 16". Since 2026-11-27 each is a label (term)
+   * and its number (definition); the tile is the box around both.
+   */
   tile(label: WorkflowTile): Locator {
-    const name = this.page.getByRole('paragraph').filter({ hasText: new RegExp(`^${escapeRegExp(label)}$`) });
-    // The innermost box that holds both the label and a number is the tile.
     return this.main
-      .locator('div')
-      .filter({ has: name })
-      .filter({ has: this.page.getByRole('heading', { level: 5 }) })
-      .last();
+      .getByRole('term')
+      .filter({ hasText: new RegExp(`^${escapeRegExp(label)}$`) })
+      .locator('xpath=ancestor::*[@data-slot="kpi"][1]');
+  }
+
+  /** The number on a tile, e.g. "8" for Live. */
+  tileValue(label: WorkflowTile): Locator {
+    return this.tile(label).getByRole('definition');
   }
 
   statusTab(tab: WorkflowStatusTab): Locator {
@@ -110,7 +117,8 @@ export class WorkflowsPage {
 
   /** Pick a trigger in the "All triggers" filter; waits for the list asked for with `?triggerType=`. */
   async filterByTrigger(trigger: keyof typeof TRIGGER_TYPES): Promise<void> {
-    await this.triggerFilter.click();
+    // The filter's button has no width since 2026-11-27; its visible box (a group) takes the click.
+    await this.page.getByRole('group').filter({ has: this.triggerFilter }).last().click();
     const listed = waitForListResponse(this.page, ENDPOINTS.workflows, {
       triggerType: TRIGGER_TYPES[trigger],
     });

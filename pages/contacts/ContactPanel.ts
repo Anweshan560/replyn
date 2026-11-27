@@ -117,10 +117,13 @@ export class ContactPanel {
     await expect(this.resolveDialog).toBeHidden();
   }
 
-  /** On the Billing tab: Add advance for `amount` with a note, and save. */
+  /**
+   * Visits → the "Owes" card, which opens the patient's billing → Add advance for `amount` with a
+   * note, and save. Only in a workspace without an EMR.
+   */
   async addAdvance(contactId: string, amount: number, note: string): Promise<void> {
-    // Billing moved into Visits in the 2026-11-25 redesign; this flow still needs checking there.
     await this.openTab('Visits');
+    await this.root.getByRole('button', { name: /^Owes / }).click();
     await this.root.getByRole('button', { name: 'Add advance' }).click();
     const dialog = this.page.getByRole('dialog', { name: 'Add an advance' });
     await expect(dialog).toBeVisible();
@@ -135,7 +138,7 @@ export class ContactPanel {
     await expect(dialog).toBeHidden();
   }
 
-  /** A money record on the Billing tab, e.g. the advance "ADV-000004". */
+  /** A money record in the patient's billing (Visits → Owes), e.g. the advance "ADV-000004". */
   billingDocument(code: string): Locator {
     return this.root.getByRole('button', { name: new RegExp(escapeRegExp(code)) });
   }

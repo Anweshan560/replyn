@@ -29,7 +29,7 @@ type ReviewItem = {
  * Billing in EMR mode. QA Workspace is connected to ClinicSoft (an EMR), so money is recorded in
  * the EMR and synced into Replyn: Replyn refuses payments and advances, shows the synced invoices
  * and receipts, and flags visits the EMR has no invoice for. The tests that record money through
- * Replyn itself (billing.api.spec.ts, billing.spec.ts) need a workspace without an EMR.
+ * Replyn itself run in the workspace without an EMR (tests/clinic/no-emr).
  */
 test.describe('Billing API in EMR mode', { tag: ['@clinic', '@billing'] }, () => {
   test('should refuse an advance with 409, saying to add it in the EMR', async ({
@@ -49,6 +49,37 @@ test.describe('Billing API in EMR mode', { tag: ['@clinic', '@billing'] }, () =>
       const billing = await billingApi.contactBillingRecord(contact.id);
       expect(billing.advances).toEqual([]);
       expect(billing.summary.advances).toBe('0.00');
+    });
+  });
+
+  test("should refuse a visit's payment with 409, saying to add it in the EMR", async ({
+    appointmentsApi,
+    billingApi,
+    contactsApi,
+    doctorsApi,
+    treatmentsApi,
+    cleanup,
+  }) => {
+    const setup = await createDoctorAndTreatment({ doctorsApi, treatmentsApi }, cleanup);
+    const visit = await test.step('book a visit yesterday and mark it attended', async () => {
+      const booked = await bookThroughApi(
+        { appointmentsApi, contactsApi },
+        cleanup,
+        setup,
+        buildPatient(),
+        yesterday(),
+      );
+      expect((await appointmentsApi.update(booked.id, { status: 'completed' })).ok()).toBe(true);
+      return booked;
+    });
+
+    const response = await test.step('POST an invoice for the visit', () =>
+      billingApi.recordInvoice({ appointmentId: visit.id, total: 100 }));
+
+    await test.step('responds 409 "records money in its EMR", and the patient has no invoice', async () => {
+      expect(response.status()).toBe(409);
+      expect((await response.json()).message).toBe(EMR_KEEPS_MONEY);
+      expect((await billingApi.contactBillingRecord(visit.contactId)).invoices).toEqual([]);
     });
   });
 

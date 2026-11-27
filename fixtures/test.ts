@@ -30,7 +30,13 @@ import { WorkflowsApi } from '../api/WorkflowsApi';
 import { BroadcastsApi, ChannelsApi } from '../api/BroadcastsApi';
 import { SidebarApi } from '../api/SidebarApi';
 import { InboxApi, type TestConversation } from '../api/InboxApi';
-import { AGENT_AUTH_FILE, env, getAgentCredentials } from '../config/env';
+import {
+  AGENT_AUTH_FILE,
+  NO_EMR_AGENT_AUTH_FILE,
+  env,
+  getAgentCredentials,
+  getNoEmrAgentCredentials,
+} from '../config/env';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { SavedViewsPage } from '../pages/inbox/SavedViewsPage';
 import { ConversationPage } from '../pages/inbox/ConversationPage';
@@ -154,6 +160,8 @@ type Fixtures = {
    * live updates). The test is skipped when TEST_AGENT_USERNAME / TEST_AGENT_PASSWORD are not set.
    */
   agent: AgentSession;
+  /** The Agent of the workspace without an EMR (tests/clinic/no-emr): their API headers there. */
+  noEmrAgentHeaders: HeadersProvider;
 };
 
 /** A second person, logged in as the Agent: their own page, inbox API and user id. */
@@ -527,6 +535,18 @@ export const test = base.extend<Fixtures>({
       conversationPage: new ConversationPage(page, workspaceId),
       ...(await inboxApi.currentUser()),
     });
+    await context.close();
+  },
+
+  noEmrAgentHeaders: async ({ browser }, use, testInfo) => {
+    testInfo.skip(!getNoEmrAgentCredentials(), 'TEST_AGENT_USERNAME1 and TEST_AGENT_PASSWORD1 are not set');
+    const context = await browser.newContext({
+      storageState: NO_EMR_AGENT_AUTH_FILE,
+      baseURL: env.baseUrl,
+      permissions: ['notifications'],
+    });
+    const { headers } = await apiHeadersFor(await context.newPage());
+    await use(headers);
     await context.close();
   },
 

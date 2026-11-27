@@ -76,10 +76,16 @@ jobs:
       TEST_USERNAME: ${{ secrets.SECRETU }}
       TEST_PASSWORD: ${{ secrets.SECRETP }}
       # The limited Agent account for the permission tests; they are skipped while these are unset.
-      TEST_AGENT_USERNAME: ${{ secrets.TEST_AGENT_USERNAME }}
+      # The secret was saved as TEST_AGENT_EMAIL; without the fallback the Agent tests skipped on CI.
+      TEST_AGENT_USERNAME: ${{ secrets.TEST_AGENT_USERNAME || secrets.TEST_AGENT_EMAIL }}
       TEST_AGENT_PASSWORD: ${{ secrets.TEST_AGENT_PASSWORD }}
+      # The Agent of the workspace without an EMR (its payment permission test skips while unset).
+      TEST_AGENT_USERNAME1: ${{ secrets.TEST_AGENT_USERNAME1 }}
+      TEST_AGENT_PASSWORD1: ${{ secrets.TEST_AGENT_PASSWORD1 }}
       # Set a repository variable TEST_WORKSPACE to change it without editing this file.
       TEST_WORKSPACE: ${{ vars.TEST_WORKSPACE || 'Workspace for reports testing' }}
+      # The workspace without an EMR, for the money tests (tests/clinic/no-emr).
+      NO_EMR_WORKSPACE: ${{ vars.NO_EMR_WORKSPACE || 'WITHOUT EMR' }}
       # Failed tests are written to this Google Sheet (see README, "Failed tests sheet").
       FAILED_TESTS_SHEET_ID: ${{ vars.FAILED_TESTS_SHEET_ID }}
       GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
